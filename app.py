@@ -306,7 +306,8 @@ def render_details(details: dict[str, Any], client: OmdbClient) -> None:
             season_num = st.selectbox(
                 "Sélectionnez une saison",
                 range(1, total_seasons + 1),
-                format_func=lambda x: f"Saison {x}"
+                format_func=lambda x: f"Saison {x}",
+                key="season_select"
             )
             
             try:
@@ -314,21 +315,24 @@ def render_details(details: dict[str, Any], client: OmdbClient) -> None:
                 episodes = season_data.get("Episodes", [])
                 
                 if episodes:
-                    st.markdown(f"**{season_data.get('Title', 'Titre')}** - {len(episodes)} épisodes")
+                    season_title = season_data.get('Title', 'Titre')
+                    st.markdown(f"### {season_title} - {len(episodes)} épisodes")
                     
-                    for episode in episodes:
-                        with st.container(border=True):
-                            ep_col_1, ep_col_2 = st.columns([1, 4])
-                            
-                            with ep_col_1:
-                                ep_num = episode.get("Episode", "?")
-                                st.subheader(f"Ep. {ep_num}")
-                                st.caption(f"⭐ {episode.get('imdbRating', 'N/A')}")
-                            
-                            with ep_col_2:
-                                st.markdown(f"**{episode.get('Title', 'Sans titre')}**")
-                                st.caption(f"Diffusé le: {episode.get('Released', 'N/A')}")
-                                st.write(episode.get("Plot", "Aucun résumé."))
+                    for idx, episode in enumerate(episodes):
+                        ep_num = episode.get("Episode", "?")
+                        ep_title = episode.get('Title', 'Sans titre')
+                        ep_rating = episode.get('imdbRating', 'N/A')
+                        ep_date = episode.get('Released', 'N/A')
+                        ep_plot = episode.get("Plot", "Aucun résumé.")
+                        
+                        with st.expander(f"📺 Épisode {ep_num}: {ep_title} ⭐ {ep_rating}", expanded=(idx == 0)):
+                            col_ep1, col_ep2 = st.columns([1, 3])
+                            with col_ep1:
+                                st.metric("Épisode", ep_num)
+                                st.metric("Note IMDb", ep_rating)
+                            with col_ep2:
+                                st.write(f"**Date:** {ep_date}")
+                                st.write(f"**Résumé:**\n{ep_plot}")
                 else:
                     st.info(f"Aucun épisode trouvé pour la saison {season_num}.")
             except OmdbError as exc:
@@ -397,7 +401,7 @@ def main() -> None:
 
     # PAGE: DETAILS
     if st.session_state["current_page"] == "details" and st.session_state["selected_imdb_id"]:
-        if st.button("← Retour à la recherche"):
+        if st.button("← Retour à la recherche", key="btn_back_to_search"):
             st.session_state["current_page"] = "search"
             st.session_state["selected_imdb_id"] = None
             st.rerun()
@@ -424,12 +428,13 @@ def main() -> None:
                 placeholder="Exemple : Avatar, Breaking Bad, One Piece...",
             )
         with top_col2:
-            search_clicked = st.button("Rechercher", type="primary", use_container_width=True)
+            search_clicked = st.button("Rechercher", type="primary", use_container_width=True, key="search_btn")
 
-        if search_clicked:
+        if search_clicked or (query and query != st.session_state.get("last_query")):
             st.session_state["search_query"] = query
             st.session_state["search_page"] = 1
             st.session_state["search_media_type"] = "all"
+            st.session_state["last_query"] = query
 
         render_trending_section(client)
 
@@ -451,13 +456,13 @@ def main() -> None:
                 if total_pages > 1:
                     page_col1, page_col2, page_col3 = st.columns([1, 1, 1])
                     with page_col1:
-                        if st.button("← Page précédente", disabled=page <= 1):
+                        if st.button("← Page précédente", disabled=page <= 1, key="btn_prev"):
                             st.session_state["search_page"] = max(1, page - 1)
                             st.rerun()
                     with page_col2:
                         st.markdown(f"**Page {page} / {total_pages}**")
                     with page_col3:
-                        if st.button("Page suivante →", disabled=page >= total_pages):
+                        if st.button("Page suivante →", disabled=page >= total_pages, key="btn_next"):
                             st.session_state["search_page"] = min(total_pages, page + 1)
                             st.rerun()
 
