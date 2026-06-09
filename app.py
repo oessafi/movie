@@ -194,15 +194,15 @@ def render_trending_section(client: OmdbClient) -> None:
     tabs = st.tabs(["Films tendance", "Séries tendance"])
     with tabs[0]:
         movies = fetch_trending_titles(client, trending_movies, "movie")
-        for movie in movies:
-            render_movie_card(movie, client)
+        for idx, movie in enumerate(movies):
+            render_movie_card(movie, client, context=f"trending_movie_{idx}")
     with tabs[1]:
         series = fetch_trending_titles(client, trending_series, "series")
-        for serie in series:
-            render_movie_card(serie, client)
+        for idx, serie in enumerate(series):
+            render_movie_card(serie, client, context=f"trending_serie_{idx}")
 
 
-def render_movie_card(movie: dict[str, Any], client: OmdbClient) -> None:
+def render_movie_card(movie: dict[str, Any], client: OmdbClient, context: str = "") -> None:
     with st.container(border=True):
         col_img, col_info = st.columns([1, 3])
 
@@ -222,12 +222,15 @@ def render_movie_card(movie: dict[str, Any], client: OmdbClient) -> None:
             st.subheader(f"{title} ({year})")
             st.caption(f"Type: {media_type} | IMDb ID: {imdb_id}")
 
-            fav_key = f"fav_{imdb_id}"
+            # Créer des clés uniques avec le contexte
+            key_suffix = f"_{context}" if context else ""
+            fav_key = f"fav_{imdb_id}{key_suffix}"
+            details_key = f"details_{imdb_id}{key_suffix}"
             playimdb_url = f"https://www.playimdb.com/pt/title/{imdb_id}/" if imdb_id else ""
 
             button_col_1, button_col_2, button_col_3 = st.columns([1, 1, 1])
             with button_col_1:
-                if st.button("📋 Détails", key=f"details_{imdb_id}", use_container_width=True):
+                if st.button("📋 Détails", key=details_key, use_container_width=True):
                     st.session_state["selected_imdb_id"] = imdb_id
                     st.session_state["current_page"] = "details"
                     st.rerun()
@@ -442,8 +445,8 @@ def main() -> None:
                 total_pages = max(1, math.ceil(total_results / 10))
 
                 st.success(f"✅ {total_results} résultat(s) trouvé(s). Page {page}/{total_pages}.")
-                for movie in movies:
-                    render_movie_card(movie, client)
+                for idx, movie in enumerate(movies):
+                    render_movie_card(movie, client, context=f"search_page{page}_{idx}")
 
                 if total_pages > 1:
                     page_col1, page_col2, page_col3 = st.columns([1, 1, 1])
