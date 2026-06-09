@@ -426,22 +426,21 @@ def main() -> None:
                 "Titre à rechercher",
                 value=st.session_state["search_query"],
                 placeholder="Exemple : Avatar, Breaking Bad, One Piece...",
+                key="search_input"
             )
         with top_col2:
             search_clicked = st.button("Rechercher", type="primary", use_container_width=True, key="search_btn")
 
-        if search_clicked or (query and query != st.session_state.get("last_query")):
+        if search_clicked:
             st.session_state["search_query"] = query
             st.session_state["search_page"] = 1
             st.session_state["search_media_type"] = "all"
-            st.session_state["last_query"] = query
-
-        render_trending_section(client)
 
         query = st.session_state["search_query"]
         media_type = st.session_state["search_media_type"]
         page = st.session_state["search_page"]
 
+        # Si une recherche est active, afficher les résultats
         if query.strip():
             try:
                 results = client.search_movies(query, page=int(page), media_type=media_type)
@@ -450,24 +449,33 @@ def main() -> None:
                 total_pages = max(1, math.ceil(total_results / 10))
 
                 st.success(f"✅ {total_results} résultat(s) trouvé(s). Page {page}/{total_pages}.")
-                for idx, movie in enumerate(movies):
-                    render_movie_card(movie, client, context=f"search_page{page}_{idx}")
+                
+                if movies:
+                    for idx, movie in enumerate(movies):
+                        render_movie_card(movie, client, context=f"search_page{page}_{idx}")
 
-                if total_pages > 1:
-                    page_col1, page_col2, page_col3 = st.columns([1, 1, 1])
-                    with page_col1:
-                        if st.button("← Page précédente", disabled=page <= 1, key="btn_prev"):
-                            st.session_state["search_page"] = max(1, page - 1)
-                            st.rerun()
-                    with page_col2:
-                        st.markdown(f"**Page {page} / {total_pages}**")
-                    with page_col3:
-                        if st.button("Page suivante →", disabled=page >= total_pages, key="btn_next"):
-                            st.session_state["search_page"] = min(total_pages, page + 1)
-                            st.rerun()
+                    if total_pages > 1:
+                        st.divider()
+                        page_col1, page_col2, page_col3 = st.columns([1, 1, 1])
+                        with page_col1:
+                            if st.button("← Page précédente", disabled=page <= 1, key="btn_prev"):
+                                st.session_state["search_page"] = max(1, page - 1)
+                                st.rerun()
+                        with page_col2:
+                            st.markdown(f"**Page {page} / {total_pages}**")
+                        with page_col3:
+                            if st.button("Page suivante →", disabled=page >= total_pages, key="btn_next"):
+                                st.session_state["search_page"] = min(total_pages, page + 1)
+                                st.rerun()
+                else:
+                    st.info("Aucun résultat trouvé. Essayez une autre recherche.")
 
             except OmdbError as exc:
-                st.error(str(exc))
+                st.error(f"Erreur de recherche: {str(exc)}")
+        
+        # Sinon, afficher les tendances
+        else:
+            render_trending_section(client)
 
     with tab_favorites:
         render_favorites(client)
