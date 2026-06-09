@@ -303,6 +303,7 @@ def render_details(details: dict[str, Any], client: OmdbClient) -> None:
         
         total_seasons = int(details.get("totalSeasons", 0))
         if total_seasons > 0:
+            # Sélecteur de saison
             season_num = st.selectbox(
                 "Sélectionnez une saison",
                 range(1, total_seasons + 1),
@@ -318,21 +319,37 @@ def render_details(details: dict[str, Any], client: OmdbClient) -> None:
                     season_title = season_data.get('Title', 'Titre')
                     st.markdown(f"### {season_title} - {len(episodes)} épisodes")
                     
-                    for idx, episode in enumerate(episodes):
-                        ep_num = episode.get("Episode", "?")
-                        ep_title = episode.get('Title', 'Sans titre')
-                        ep_rating = episode.get('imdbRating', 'N/A')
-                        ep_date = episode.get('Released', 'N/A')
-                        ep_plot = episode.get("Plot", "Aucun résumé.")
-                        
-                        with st.expander(f"📺 Épisode {ep_num}: {ep_title} ⭐ {ep_rating}", expanded=(idx == 0)):
-                            col_ep1, col_ep2 = st.columns([1, 3])
-                            with col_ep1:
-                                st.metric("Épisode", ep_num)
-                                st.metric("Note IMDb", ep_rating)
-                            with col_ep2:
-                                st.write(f"**Date:** {ep_date}")
-                                st.write(f"**Résumé:**\n{ep_plot}")
+                    # Sélecteur d'épisode
+                    episode_options = [f"E{ep.get('Episode', '?').zfill(2)}: {ep.get('Title', 'Sans titre')}" for ep in episodes]
+                    selected_ep_idx = st.selectbox(
+                        "Choisir un épisode",
+                        range(len(episodes)),
+                        format_func=lambda x: episode_options[x],
+                        key=f"episode_select_s{season_num}"
+                    )
+                    
+                    # Afficher les détails de l'épisode sélectionné
+                    episode = episodes[selected_ep_idx]
+                    ep_num = episode.get("Episode", "?")
+                    ep_title = episode.get('Title', 'Sans titre')
+                    ep_rating = episode.get('imdbRating', 'N/A')
+                    ep_date = episode.get('Released', 'N/A')
+                    ep_plot = episode.get("Plot", "Aucun résumé.")
+                    
+                    st.divider()
+                    
+                    # Header de l'épisode
+                    ep_col1, ep_col2, ep_col3 = st.columns([2, 1, 1])
+                    with ep_col1:
+                        st.markdown(f"#### 📺 Épisode {ep_num}: {ep_title}")
+                    with ep_col2:
+                        st.metric("Note IMDb", ep_rating)
+                    with ep_col3:
+                        st.metric("Date", ep_date)
+                    
+                    # Résumé
+                    st.markdown("**Résumé :**")
+                    st.write(ep_plot)
                 else:
                     st.info(f"Aucun épisode trouvé pour la saison {season_num}.")
             except OmdbError as exc:
