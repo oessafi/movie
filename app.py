@@ -440,7 +440,7 @@ def main() -> None:
         top_col1, top_col2 = st.columns([4, 1])
         with top_col1:
             query = st.text_input(
-                "Titre à rechercher",
+                "",
                 value=st.session_state["search_query"],
                 placeholder="Exemple : Avatar, Breaking Bad, One Piece...",
                 key="search_input"
