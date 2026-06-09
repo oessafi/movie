@@ -23,121 +23,319 @@ def inject_app_styles() -> None:
     st.markdown(
         """
         <style>
-        .stApp {
-            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 50%, #0f0f1e 100%);
-            color: #f8f8f8;
-        }
-        .block-container {
-            padding: 2rem 3rem 3rem;
-            max-width: 1400px;
-        }
-        .css-18e3th9 { padding-top: 0rem; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
-        .stButton>button {
-            background-color: #e50914 !important;
-            color: white !important;
-            border-radius: 0.65rem !important;
-            padding: 0.8rem 1rem !important;
+        .stApp {
+            background: linear-gradient(135deg, #0f0f1e 0%, #15162b 50%, #0f0f1e 100%);
+            color: #e0e0e0;
+        }
+        
+        .block-container {
+            padding: 0;
+            max-width: 100%;
+        }
+        
+        .main-content {
+            padding: 2.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .css-18e3th9 { padding-top: 0 !important; }
+        
+        /* Header modern */
+        .header-container {
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid rgba(233, 9, 20, 0.15);
+            padding-bottom: 1.5rem;
+        }
+        
+        .header-container h1 {
+            color: #ff1e2d !important;
+            font-size: 2.8rem !important;
+            font-weight: 900 !important;
+            letter-spacing: -1px;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        .hero-text {
+            color: #a8a8b8;
+            font-size: 1rem;
+            font-weight: 300;
+            letter-spacing: 0.3px;
+        }
+        
+        /* Tabs modern */
+        .stTabs [data-baseweb="tab-list"] {
+            border-bottom: 1px solid rgba(233, 9, 20, 0.1) !important;
+            gap: 2rem !important;
+        }
+        
+        .stTabs [data-baseweb="tab-list"] button {
+            color: #a0a0b0 !important;
+            border-bottom: 3px solid transparent !important;
             font-weight: 700 !important;
-            box-shadow: 0 12px 24px rgba(233, 9, 20, 0.3) !important;
+            font-size: 1rem !important;
+            padding: 0.75rem 0 !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .stTabs [data-baseweb="tab-list"] button:hover {
+            color: #ff1e2d !important;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            color: #ff1e2d !important;
+            border-bottom: 3px solid #ff1e2d !important;
+        }
+        
+        /* Search bar enhanced */
+        .search-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+            align-items: flex-end;
+        }
+        
+        .stTextInput input {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            border: 1.5px solid rgba(233, 9, 20, 0.25) !important;
+            border-radius: 12px !important;
+            color: #e0e0e0 !important;
+            font-size: 1rem !important;
+            padding: 0.95rem 1.2rem !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        .stTextInput input:focus {
+            background-color: rgba(255, 255, 255, 0.12) !important;
+            border-color: #ff1e2d !important;
+            box-shadow: 0 0 20px rgba(255, 30, 45, 0.2) !important;
+        }
+        
+        .stTextInput input::placeholder {
+            color: #808090 !important;
+        }
+        
+        /* Button primary (search) */
+        .btn-search {
+            background: linear-gradient(135deg, #ff1e2d 0%, #e50914 100%) !important;
+            color: white !important;
+            border-radius: 12px !important;
+            padding: 0.95rem 2rem !important;
+            font-weight: 700 !important;
+            border: none !important;
+            box-shadow: 0 8px 24px rgba(255, 30, 45, 0.3) !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+        }
+        
+        .btn-search:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 12px 32px rgba(255, 30, 45, 0.4) !important;
+        }
+        
+        /* Card grid */
+        .movies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        @media (max-width: 1024px) {
+            .movies-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+        }
+        
+        @media (max-width: 768px) {
+            .movies-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+        }
+        
+        @media (max-width: 480px) {
+            .movies-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+        }
+        
+        /* Movie card */
+        .movie-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(233, 9, 20, 0.15);
+            border-radius: 14px;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .movie-card:hover {
+            border-color: rgba(255, 30, 45, 0.4);
+            box-shadow: 0 12px 48px rgba(255, 30, 45, 0.15);
+            transform: translateY(-6px);
+            background: rgba(255, 255, 255, 0.06);
+        }
+        
+        .movie-card-poster {
+            width: 100%;
+            aspect-ratio: 2/3;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.4);
+        }
+        
+        .movie-card-poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+        
+        .movie-card:hover .movie-card-poster img {
+            transform: scale(1.05);
+        }
+        
+        .movie-card-content {
+            padding: 1rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .movie-card-title {
+            color: #f0f0f0;
+            font-weight: 700;
+            font-size: 0.95rem;
+            line-height: 1.3;
+            margin-bottom: 0.5rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        
+        .movie-card-meta {
+            color: #909098;
+            font-size: 0.8rem;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
+        }
+        
+        .movie-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: auto;
+        }
+        
+        .movie-card-actions button {
+            flex: 1;
+            padding: 0.6rem !important;
+            font-size: 0.8rem !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
             transition: all 0.3s ease !important;
             border: none !important;
         }
-        .stButton>button:hover {
-            background-color: #ff121f !important;
+        
+        .btn-details {
+            background-color: #ff1e2d !important;
+            color: white !important;
+        }
+        
+        .btn-details:hover {
+            background-color: #ff5559 !important;
             transform: translateY(-2px) !important;
-            box-shadow: 0 15px 30px rgba(233, 9, 20, 0.4) !important;
         }
         
-        section[data-testid="stSidebar"] {
-            background: rgba(10, 12, 22, 0.98);
-            border-radius: 1rem;
-            padding: 1.25rem;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+        .btn-fav {
+            background-color: rgba(233, 9, 20, 0.3) !important;
+            color: #ff1e2d !important;
+            border: 1px solid rgba(255, 30, 45, 0.3) !important;
         }
         
-        .css-1d391kg, .css-16cd23f {
-            background: rgba(255, 255, 255, 0.04) !important;
-            border: 1px solid rgba(233, 9, 20, 0.3) !important;
-            border-radius: 1rem !important;
-            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
+        .btn-fav:hover {
+            background-color: rgba(233, 9, 20, 0.5) !important;
+            border-color: #ff1e2d !important;
         }
         
-        .stMarkdown h1 {
-            color: #ff6b6b;
-            font-size: 2.5rem;
+        .btn-watch {
+            background-color: #f6c744 !important;
+            color: #111 !important;
+            font-weight: 700 !important;
+            flex: 1.2;
+            border: none !important;
+        }
+        
+        .btn-watch:hover {
+            background-color: #ffd93d !important;
+        }
+        
+        /* Sections */
+        .section-title {
+            color: #ff1e2d;
+            font-size: 1.6rem;
             font-weight: 800;
-            margin-bottom: 0.5rem;
+            margin: 2.5rem 0 0.5rem 0;
+            letter-spacing: -0.5px;
         }
         
-        .stMarkdown h2 {
-            color: #ffd93d;
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-top: 1.5rem;
+        .section-desc {
+            color: #a0a0b0;
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
         }
         
-        .stMarkdown h3 {
-            color: #f8f8f8;
-            font-size: 1.4rem;
+        /* Standard buttons */
+        .stButton>button {
+            background-color: #ff1e2d !important;
+            color: white !important;
+            border-radius: 10px !important;
+            padding: 0.8rem 1.2rem !important;
+            font-weight: 700 !important;
+            box-shadow: 0 8px 20px rgba(255, 30, 45, 0.3) !important;
+            transition: all 0.3s ease !important;
+            border: none !important;
         }
         
-        .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
-            color: #d8d8d8;
+        .stButton>button:hover {
+            background-color: #ff5559 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 12px 28px rgba(255, 30, 45, 0.4) !important;
         }
         
-        .stMarkdown p, .stMarkdown span, .stText {
-            color: #d8d8d8;
-            line-height: 1.6;
+        /* Selects */
+        .stSelectbox, .stRadio {
+            color: #e0e0e0 !important;
         }
         
+        .stSelectbox, .stNumberInput {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(233, 9, 20, 0.2) !important;
+            border-radius: 10px !important;
+        }
+        
+        /* Other elements */
         .stAlert {
-            border-radius: 0.85rem;
-            border-left: 4px solid #e50914 !important;
+            border-radius: 12px !important;
+            border-left: 4px solid #ff1e2d !important;
+            background: rgba(255, 30, 45, 0.1) !important;
+        }
+        
+        .stDivider {
+            background-color: rgba(233, 9, 20, 0.15) !important;
+        }
+        
+        .stImage {
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+            letter-spacing: -0.5px;
         }
         
         #MainMenu, header, footer, button[title="Open the menu"], button[title="Open details"] {
             visibility: hidden !important;
             display: none !important;
-        }
-        
-        .hero-text {
-            font-size: 1.2rem;
-            color: #ffd93d;
-            margin-top: -0.5rem;
-            margin-bottom: 2rem;
-            font-weight: 300;
-            letter-spacing: 0.5px;
-        }
-        
-        .stImage {
-            border-radius: 1rem;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-        }
-        
-        .stTabs [data-baseweb="tab-list"] button {
-            color: #d8d8d8 !important;
-            border-bottom: 2px solid transparent !important;
-            font-weight: 600 !important;
-        }
-        
-        .stTabs [aria-selected="true"] {
-            color: #e50914 !important;
-            border-bottom: 2px solid #e50914 !important;
-        }
-        
-        .stSelectbox, .stRadio {
-            color: #f8f8f8 !important;
-        }
-        
-        .stSelectbox, .stTextInput, .stNumberInput {
-            background-color: rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(233, 9, 20, 0.2) !important;
-            border-radius: 0.5rem !important;
-        }
-        
-        .stDivider {
-            background-color: rgba(233, 9, 20, 0.2) !important;
         }
         </style>
         """,
@@ -173,8 +371,8 @@ def fetch_trending_titles(client: OmdbClient, titles: list[str], media_type: str
 
 
 def render_trending_section(client: OmdbClient) -> None:
-    st.subheader("Tendances")
-    st.write("Découvrez les films et séries les plus populaires du moment.")
+    st.markdown('<h3 class="section-title">🔥 Tendances</h3>', unsafe_allow_html=True)
+    st.markdown('<p class="section-desc">Découvrez les films et séries les plus populaires du moment.</p>', unsafe_allow_html=True)
 
     trending_movies = [
         "Avatar",
@@ -191,15 +389,13 @@ def render_trending_section(client: OmdbClient) -> None:
         "Squid Game",
     ]
 
-    tabs = st.tabs(["Films tendance", "Séries tendance"])
+    tabs = st.tabs(["🎬 Films tendance", "📺 Séries tendance"])
     with tabs[0]:
         movies = fetch_trending_titles(client, trending_movies, "movie")
-        for idx, movie in enumerate(movies):
-            render_movie_card(movie, client, context=f"trending_movie_{idx}")
+        render_movies_grid(movies, client, context="trending_movie")
     with tabs[1]:
         series = fetch_trending_titles(client, trending_series, "series")
-        for idx, serie in enumerate(series):
-            render_movie_card(serie, client, context=f"trending_serie_{idx}")
+        render_movies_grid(series, client, context="trending_serie")
 
 
 def render_movie_card(movie: dict[str, Any], client: OmdbClient, context: str = "") -> None:
@@ -247,6 +443,79 @@ def render_movie_card(movie: dict[str, Any], client: OmdbClient, context: str = 
                         st.success("Ajouté aux favoris.")
                     else:
                         st.warning("Déjà dans les favoris ou données incomplètes.")
+
+
+def render_movies_grid(movies: list[dict[str, Any]], client: OmdbClient, context: str = "") -> None:
+    """Affiche les films en grid responsive."""
+    if not movies:
+        st.info("Aucun film à afficher.")
+        return
+    
+    cols_per_row = 4
+    for i in range(0, len(movies), cols_per_row):
+        cols = st.columns(cols_per_row)
+        for col_idx, col in enumerate(cols):
+            movie_idx = i + col_idx
+            if movie_idx < len(movies):
+                movie = movies[movie_idx]
+                with col:
+                    render_movie_grid_card(movie, client, context=f"{context}_{movie_idx}")
+
+
+def render_movie_grid_card(movie: dict[str, Any], client: OmdbClient, context: str = "") -> None:
+    """Carte film compacte pour grid."""
+    title = movie.get("Title", "Titre inconnu")
+    year = movie.get("Year", "N/A")
+    media_type = movie.get("Type", "N/A")
+    imdb_id = movie.get("imdbID", "")
+    poster = poster_url(movie)
+    
+    key_suffix = f"_{context}" if context else ""
+    fav_key = f"fav_{imdb_id}{key_suffix}"
+    details_key = f"details_{imdb_id}{key_suffix}"
+    playimdb_url = f"https://www.playimdb.com/pt/title/{imdb_id}/" if imdb_id else ""
+    
+    # Conteneur de la carte
+    card_html = f"""
+    <div class="movie-card">
+        <div class="movie-card-poster">
+            {f'<img src="{poster}" alt="{title}">' if poster else '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#222;color:#888;">Pas d\'affiche</div>'}
+        </div>
+        <div class="movie-card-content">
+            <div class="movie-card-title">{title}</div>
+            <div class="movie-card-meta">
+                {year} • {media_type}
+            </div>
+            <div class="movie-card-actions">
+    """
+    
+    st.markdown(card_html, unsafe_allow_html=True)
+    
+    # Boutons
+    action_col1, action_col2, action_col3 = st.columns([1, 1.2, 1])
+    
+    with action_col1:
+        if st.button("📋", key=f"details_small_{details_key}", help="Détails", use_container_width=True):
+            st.session_state["selected_imdb_id"] = imdb_id
+            st.session_state["current_page"] = "details"
+            st.rerun()
+    
+    with action_col2:
+        if imdb_id:
+            st.markdown(
+                f'<a href="{playimdb_url}" target="_blank" style="display:block;padding:0.55rem;background-color:#f6c744;color:#111;text-decoration:none;border-radius:8px;text-align:center;font-weight:600;font-size:0.8rem;">🎬 Regarder</a>',
+                unsafe_allow_html=True,
+            )
+    
+    with action_col3:
+        if st.button("⭐", key=f"fav_small_{fav_key}", help="Favoris", use_container_width=True):
+            added = add_favorite(movie)
+            if added:
+                st.toast("✅ Ajouté aux favoris!")
+            else:
+                st.toast("⚠️ Déjà dans les favoris.")
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 
 def render_details(details: dict[str, Any], client: OmdbClient) -> None:
@@ -431,21 +700,22 @@ def main() -> None:
         return
 
     # PAGE: SEARCH & FAVORITES
-    st.title("🎬 Movie Explorer")
-    st.markdown('<div class="hero-text">Découvrez films, séries et animations du monde entier.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-container"><h1>🎬 Movie Explorer</h1></div>', unsafe_allow_html=True)
+    st.markdown('<div style="margin-bottom:2.5rem;"><p class="hero-text">Découvrez films, séries et animations du monde entier.</p></div>', unsafe_allow_html=True)
 
     tab_search, tab_favorites = st.tabs(["🔍 Recherche", "⭐ Favoris"])
 
     with tab_search:
-        top_col1, top_col2 = st.columns([4, 1])
-        with top_col1:
+        # Barre de recherche améliorée
+        search_col1, search_col2 = st.columns([5, 1])
+        with search_col1:
             query = st.text_input(
                 "",
                 value=st.session_state["search_query"],
                 placeholder="Exemple : Avatar, Breaking Bad, One Piece...",
                 key="search_input"
             )
-        with top_col2:
+        with search_col2:
             search_clicked = st.button("Rechercher", type="primary", use_container_width=True, key="search_btn")
 
         if search_clicked:
@@ -468,8 +738,7 @@ def main() -> None:
                 st.success(f"✅ {total_results} résultat(s) trouvé(s). Page {page}/{total_pages}.")
                 
                 if movies:
-                    for idx, movie in enumerate(movies):
-                        render_movie_card(movie, client, context=f"search_page{page}_{idx}")
+                    render_movies_grid(movies, client, context=f"search_page{page}")
 
                     if total_pages > 1:
                         st.divider()
