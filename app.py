@@ -16,6 +16,7 @@ load_dotenv()
 st.set_page_config(
     page_title="Movie Explorer",
     layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
 def inject_app_styles() -> None:
@@ -23,14 +24,15 @@ def inject_app_styles() -> None:
         """
         <style>
         .stApp {
-            background: radial-gradient(circle at top, #11141d 0%, #07090f 50%, #030405 100%);
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 50%, #0f0f1e 100%);
             color: #f8f8f8;
         }
         .block-container {
             padding: 2rem 3rem 3rem;
-            max-width: 1280px;
+            max-width: 1400px;
         }
         .css-18e3th9 { padding-top: 0rem; }
+        
         .stButton>button {
             background-color: #e50914 !important;
             color: white !important;
@@ -38,50 +40,104 @@ def inject_app_styles() -> None:
             padding: 0.8rem 1rem !important;
             font-weight: 700 !important;
             box-shadow: 0 12px 24px rgba(233, 9, 20, 0.3) !important;
+            transition: all 0.3s ease !important;
+            border: none !important;
         }
         .stButton>button:hover {
             background-color: #ff121f !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 15px 30px rgba(233, 9, 20, 0.4) !important;
         }
+        
         section[data-testid="stSidebar"] {
             background: rgba(10, 12, 22, 0.98);
             border-radius: 1rem;
             padding: 1.25rem;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
         }
+        
         .css-1d391kg, .css-16cd23f {
             background: rgba(255, 255, 255, 0.04) !important;
-            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border: 1px solid rgba(233, 9, 20, 0.3) !important;
             border-radius: 1rem !important;
             box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18) !important;
         }
-        .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
-            color: #f8f8f8;
+        
+        .stMarkdown h1 {
+            color: #ff6b6b;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
         }
-        .stMarkdown p, .stMarkdown span, .stText {
+        
+        .stMarkdown h2 {
+            color: #ffd93d;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-top: 1.5rem;
+        }
+        
+        .stMarkdown h3 {
+            color: #f8f8f8;
+            font-size: 1.4rem;
+        }
+        
+        .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
             color: #d8d8d8;
         }
+        
+        .stMarkdown p, .stMarkdown span, .stText {
+            color: #d8d8d8;
+            line-height: 1.6;
+        }
+        
         .stAlert {
             border-radius: 0.85rem;
+            border-left: 4px solid #e50914 !important;
         }
+        
         #MainMenu, header, footer, button[title="Open the menu"], button[title="Open details"] {
             visibility: hidden !important;
             display: none !important;
         }
+        
         .hero-text {
-            font-size: 1.15rem;
-            color: #c4c8d4;
-            margin-top: -1rem;
-            margin-bottom: 1.8rem;
+            font-size: 1.2rem;
+            color: #ffd93d;
+            margin-top: -0.5rem;
+            margin-bottom: 2rem;
+            font-weight: 300;
+            letter-spacing: 0.5px;
         }
-        .movie-card {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 1.1rem;
-            padding: 1.2rem;
-            margin-bottom: 1rem;
-        }
+        
         .stImage {
             border-radius: 1rem;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stTabs [data-baseweb="tab-list"] button {
+            color: #d8d8d8 !important;
+            border-bottom: 2px solid transparent !important;
+            font-weight: 600 !important;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            color: #e50914 !important;
+            border-bottom: 2px solid #e50914 !important;
+        }
+        
+        .stSelectbox, .stRadio {
+            color: #f8f8f8 !important;
+        }
+        
+        .stSelectbox, .stTextInput, .stNumberInput {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(233, 9, 20, 0.2) !important;
+            border-radius: 0.5rem !important;
+        }
+        
+        .stDivider {
+            background-color: rgba(233, 9, 20, 0.2) !important;
         }
         </style>
         """,
@@ -169,15 +225,20 @@ def render_movie_card(movie: dict[str, Any], client: OmdbClient) -> None:
             fav_key = f"fav_{imdb_id}"
             playimdb_url = f"https://www.playimdb.com/pt/title/{imdb_id}/" if imdb_id else ""
 
-            button_col_1, button_col_2 = st.columns([1, 1])
+            button_col_1, button_col_2, button_col_3 = st.columns([1, 1, 1])
             with button_col_1:
+                if st.button("📋 Détails", key=f"details_{imdb_id}", use_container_width=True):
+                    st.session_state["selected_imdb_id"] = imdb_id
+                    st.session_state["current_page"] = "details"
+                    st.rerun()
+            with button_col_2:
                 if imdb_id:
                     st.markdown(
-                        f'<a href="{playimdb_url}" target="_blank" style="display:inline-block;padding:0.5rem 1rem;background-color:#f6c744;color:#111;text-decoration:none;border-radius:0.35rem;">Voir le film</a>',
+                        f'<a href="{playimdb_url}" target="_blank" style="display:inline-block;width:100%;padding:0.5rem 0.5rem;background-color:#f6c744;color:#111;text-decoration:none;border-radius:0.35rem;text-align:center;">🎬 Regarder</a>',
                         unsafe_allow_html=True,
                     )
-            with button_col_2:
-                if st.button("Ajouter aux favoris", key=fav_key, use_container_width=True):
+            with button_col_3:
+                if st.button("⭐ Favoris", key=fav_key, use_container_width=True):
                     added = add_favorite(movie)
                     if added:
                         st.success("Ajouté aux favoris.")
@@ -185,10 +246,9 @@ def render_movie_card(movie: dict[str, Any], client: OmdbClient) -> None:
                         st.warning("Déjà dans les favoris ou données incomplètes.")
 
 
-def render_details(details: dict[str, Any]) -> None:
+def render_details(details: dict[str, Any], client: OmdbClient) -> None:
     st.divider()
-    st.header(details.get("Title", "Détails"))
-
+    
     col_img, col_data = st.columns([1, 2])
     with col_img:
         poster = poster_url(details)
@@ -196,34 +256,91 @@ def render_details(details: dict[str, Any]) -> None:
             st.image(poster, use_container_width=True)
 
     with col_data:
+        title = details.get("Title", "Titre inconnu")
+        media_type = details.get("Type", "N/A")
+        st.header(f"{title}")
+        st.caption(f"Type: {media_type}")
+        
         st.markdown(f"**Année :** {details.get('Year', 'N/A')}")
         st.markdown(f"**Genre :** {details.get('Genre', 'N/A')}")
-        st.markdown(f"**Durée :** {details.get('Runtime', 'N/A')}")
+        
+        if media_type.lower() == "series":
+            st.markdown(f"**Saisons :** {details.get('totalSeasons', 'N/A')}")
+            st.markdown(f"**Statut :** {details.get('Status', 'N/A')}")
+        else:
+            st.markdown(f"**Durée :** {details.get('Runtime', 'N/A')}")
+        
         st.markdown(f"**Réalisateur :** {details.get('Director', 'N/A')}")
         st.markdown(f"**Acteurs :** {details.get('Actors', 'N/A')}")
         st.markdown(f"**Langue :** {details.get('Language', 'N/A')}")
         st.markdown(f"**Pays :** {details.get('Country', 'N/A')}")
         st.markdown(f"**IMDb rating :** {details.get('imdbRating', 'N/A')}")
 
-    st.subheader("Résumé")
+    st.subheader("📖 Résumé")
     st.write(details.get("Plot", "Aucun résumé disponible."))
 
-    # Lien direct pour regarder le film
+    # Lien direct pour regarder
     imdb_id = details.get("imdbID", "")
     if imdb_id:
         playimdb_url = f"https://www.playimdb.com/pt/title/{imdb_id}/"
         st.markdown(
-            f'<a href="{playimdb_url}" target="_blank" style="display:inline-block;padding:0.5rem 1rem;background-color:#f6c744;color:#111;text-decoration:none;border-radius:0.35rem;">Voir le film</a>',
+            f'<a href="{playimdb_url}" target="_blank" style="display:inline-block;padding:0.7rem 1.5rem;background-color:#e50914;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:bold;font-size:1rem;">🎬 Regarder maintenant</a>',
             unsafe_allow_html=True,
         )
 
     ratings = details.get("Ratings", [])
     if ratings:
-        st.subheader("Notes")
+        st.subheader("⭐ Notes")
         st.table(ratings)
+    
+    # Gestion des saisons/épisodes pour les séries
+    media_type = details.get("Type", "N/A").lower()
+    if media_type == "series":
+        st.subheader("📺 Saisons et Épisodes")
+        
+        total_seasons = int(details.get("totalSeasons", 0))
+        if total_seasons > 0:
+            season_num = st.selectbox(
+                "Sélectionnez une saison",
+                range(1, total_seasons + 1),
+                format_func=lambda x: f"Saison {x}"
+            )
+            
+            try:
+                season_data = client.get_season(imdb_id, season_num)
+                episodes = season_data.get("Episodes", [])
+                
+                if episodes:
+                    st.markdown(f"**{season_data.get('Title', 'Titre')}** - {len(episodes)} épisodes")
+                    
+                    for episode in episodes:
+                        with st.container(border=True):
+                            ep_col_1, ep_col_2 = st.columns([1, 4])
+                            
+                            with ep_col_1:
+                                ep_num = episode.get("Episode", "?")
+                                st.subheader(f"Ep. {ep_num}")
+                                st.caption(f"⭐ {episode.get('imdbRating', 'N/A')}")
+                            
+                            with ep_col_2:
+                                st.markdown(f"**{episode.get('Title', 'Sans titre')}**")
+                                st.caption(f"Diffusé le: {episode.get('Released', 'N/A')}")
+                                st.write(episode.get("Plot", "Aucun résumé."))
+                else:
+                    st.info(f"Aucun épisode trouvé pour la saison {season_num}.")
+            except OmdbError as exc:
+                st.warning(f"Impossible de charger la saison {season_num}: {str(exc)}")
 
 
-def render_favorites() -> None:
+def fetch_season_data(client: OmdbClient, imdb_id: str, season: int) -> dict[str, Any] | None:
+    """Helper to fetch season data safely."""
+    try:
+        return client.get_season(imdb_id, season)
+    except OmdbError:
+        return None
+
+
+def render_favorites(client: OmdbClient) -> None:
     st.header("⭐ Mes favoris")
     favorites = load_favorites()
     if not favorites:
@@ -231,25 +348,42 @@ def render_favorites() -> None:
         return
 
     for movie in favorites:
-        col_1, col_2, col_3 = st.columns([1, 4, 1])
+        col_1, col_2, col_3, col_4 = st.columns([1, 3, 1, 1])
         with col_1:
             poster = poster_url(movie)
             if poster:
                 st.image(poster, width=80)
         with col_2:
-            st.markdown(f"**{movie.get('Title', 'Sans titre')}**")
-            st.caption(f"{movie.get('Year', 'N/A')} | {movie.get('Type', 'N/A')} | {movie.get('imdbID', '')}")
+            title = movie.get('Title', 'Sans titre')
+            imdb_id = movie.get('imdbID', '')
+            st.markdown(f"**{title}**")
+            st.caption(f"{movie.get('Year', 'N/A')} | {movie.get('Type', 'N/A')}")
         with col_3:
-            if st.button("Supprimer", key=f"remove_{movie.get('imdbID')}"):
-                remove_favorite(movie.get("imdbID", ""))
+            if st.button("📋 Détails", key=f"fav_details_{imdb_id}"):
+                st.session_state["selected_imdb_id"] = imdb_id
+                st.session_state["current_page"] = "details"
+                st.rerun()
+        with col_4:
+            if st.button("❌ Supprimer", key=f"remove_{imdb_id}"):
+                remove_favorite(imdb_id)
                 st.rerun()
         st.divider()
 
 
 def main() -> None:
     inject_app_styles()
-    st.title("Movie Explorer")
-    st.markdown('<div class="hero-text">Toutes les origines cinéma, séries et animation réunies en un seul endroit.</div>', unsafe_allow_html=True)
+    
+    # Initialize session state
+    if "current_page" not in st.session_state:
+        st.session_state["current_page"] = "search"
+    if "selected_imdb_id" not in st.session_state:
+        st.session_state["selected_imdb_id"] = None
+    if "search_query" not in st.session_state:
+        st.session_state["search_query"] = ""
+    if "search_page" not in st.session_state:
+        st.session_state["search_page"] = 1
+    if "search_media_type" not in st.session_state:
+        st.session_state["search_media_type"] = "movie"
 
     api_key = get_api_key()
     if not api_key:
@@ -258,28 +392,39 @@ def main() -> None:
 
     client = OmdbClient(api_key=api_key)
 
-    tab_search, tab_favorites = st.tabs(["Recherche", "Favoris"])
+    # PAGE: DETAILS
+    if st.session_state["current_page"] == "details" and st.session_state["selected_imdb_id"]:
+        if st.button("← Retour à la recherche"):
+            st.session_state["current_page"] = "search"
+            st.session_state["selected_imdb_id"] = None
+            st.rerun()
+        
+        try:
+            details = client.get_details(st.session_state["selected_imdb_id"])
+            render_details(details, client)
+        except OmdbError as exc:
+            st.error(str(exc))
+        return
+
+    # PAGE: SEARCH & FAVORITES
+    st.title("🎬 Movie Explorer")
+    st.markdown('<div class="hero-text">Découvrez films, séries et animations du monde entier.</div>', unsafe_allow_html=True)
+
+    tab_search, tab_favorites = st.tabs(["🔍 Recherche", "⭐ Favoris"])
 
     with tab_search:
-        if "search_query" not in st.session_state:
-            st.session_state["search_query"] = ""
-        if "search_page" not in st.session_state:
-            st.session_state["search_page"] = 1
-        if "search_media_type" not in st.session_state:
-            st.session_state["search_media_type"] = "movie"
-
         top_col1, top_col2, top_col3 = st.columns([4, 3, 1])
         with top_col1:
             query = st.text_input(
                 "Titre à rechercher",
                 value=st.session_state["search_query"],
-                placeholder="Exemple : Avatar, Batman, Inception...",
+                placeholder="Exemple : Avatar, Breaking Bad, One Piece...",
             )
         with top_col2:
             media_type = st.radio(
                 "Type",
-                options=["movie", "series", "game", "all"],
-                index=["movie", "series", "game", "all"].index(st.session_state["search_media_type"]),
+                options=["movie", "series", "all"],
+                index=["movie", "series", "all"].index(st.session_state["search_media_type"]),
                 horizontal=True,
             )
         with top_col3:
@@ -303,7 +448,7 @@ def main() -> None:
                 total_results = int(results.get("totalResults", 0))
                 total_pages = max(1, math.ceil(total_results / 10))
 
-                st.success(f"{total_results} résultat(s) trouvé(s). Page {page}/{total_pages}.")
+                st.success(f"✅ {total_results} résultat(s) trouvé(s). Page {page}/{total_pages}.")
                 for movie in movies:
                     render_movie_card(movie, client)
 
@@ -312,27 +457,19 @@ def main() -> None:
                     with page_col1:
                         if st.button("← Page précédente", disabled=page <= 1):
                             st.session_state["search_page"] = max(1, page - 1)
-                            st.experimental_rerun()
+                            st.rerun()
                     with page_col2:
                         st.markdown(f"**Page {page} / {total_pages}**")
                     with page_col3:
                         if st.button("Page suivante →", disabled=page >= total_pages):
                             st.session_state["search_page"] = min(total_pages, page + 1)
-                            st.experimental_rerun()
+                            st.rerun()
 
-            except OmdbError as exc:
-                st.error(str(exc))
-
-        selected_imdb_id = st.session_state.get("selected_imdb_id")
-        if selected_imdb_id:
-            try:
-                details = client.get_details(selected_imdb_id)
-                render_details(details)
             except OmdbError as exc:
                 st.error(str(exc))
 
     with tab_favorites:
-        render_favorites()
+        render_favorites(client)
 
 
 if __name__ == "__main__":

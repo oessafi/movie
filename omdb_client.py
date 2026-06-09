@@ -46,6 +46,10 @@ class OmdbClient:
         """Get full details by IMDb id."""
         return self._get({"i": imdb_id, "plot": "full"})
 
+    def get_season(self, imdb_id: str, season: int) -> dict[str, Any]:
+        """Get season data including episodes for a series."""
+        return self._get({"i": imdb_id, "Season": season})
+
     def get_by_exact_title(self, title: str, year: str | None = None) -> dict[str, Any]:
         """Get one result by exact title. Useful for quick tests."""
         params: dict[str, Any] = {"t": title.strip(), "plot": "full"}
