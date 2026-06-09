@@ -383,7 +383,7 @@ def main() -> None:
     if "search_page" not in st.session_state:
         st.session_state["search_page"] = 1
     if "search_media_type" not in st.session_state:
-        st.session_state["search_media_type"] = "movie"
+        st.session_state["search_media_type"] = "all"
 
     api_key = get_api_key()
     if not api_key:
@@ -413,7 +413,7 @@ def main() -> None:
     tab_search, tab_favorites = st.tabs(["🔍 Recherche", "⭐ Favoris"])
 
     with tab_search:
-        top_col1, top_col2, top_col3 = st.columns([4, 3, 1])
+        top_col1, top_col2 = st.columns([4, 1])
         with top_col1:
             query = st.text_input(
                 "Titre à rechercher",
@@ -421,19 +421,12 @@ def main() -> None:
                 placeholder="Exemple : Avatar, Breaking Bad, One Piece...",
             )
         with top_col2:
-            media_type = st.radio(
-                "Type",
-                options=["movie", "series", "all"],
-                index=["movie", "series", "all"].index(st.session_state["search_media_type"]),
-                horizontal=True,
-            )
-        with top_col3:
             search_clicked = st.button("Rechercher", type="primary", use_container_width=True)
 
         if search_clicked:
             st.session_state["search_query"] = query
             st.session_state["search_page"] = 1
-            st.session_state["search_media_type"] = media_type
+            st.session_state["search_media_type"] = "all"
 
         render_trending_section(client)
 
