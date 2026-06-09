@@ -31,44 +31,90 @@ def inject_app_styles() -> None:
         }
         
         .block-container {
-            padding: 0;
-            max-width: 100%;
+            width: 100%;
+            max-width: 1120px !important;
+            padding: 2rem 1rem 3rem !important;
+            margin: 0 auto !important;
+        }
+        
+        .main-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            padding: 2.5rem 1rem;
         }
         
         .main-content {
-            padding: 2.5rem;
-            max-width: 1400px;
-            margin: 0 auto;
+            width: 100%;
+            max-width: 1200px;
+            padding: 0;
         }
         
         .css-18e3th9 { padding-top: 0 !important; }
         
         /* Header modern */
         .header-container {
-            margin-bottom: 2.5rem;
+            margin-bottom: 2.25rem;
             border-bottom: 1px solid rgba(233, 9, 20, 0.15);
             padding-bottom: 1.5rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
         }
         
         .header-container h1 {
             color: #ff1e2d !important;
-            font-size: 2.8rem !important;
+            font-size: clamp(2.35rem, 6vw, 4.4rem) !important;
             font-weight: 900 !important;
-            letter-spacing: -1px;
-            margin-bottom: 0.5rem !important;
+            letter-spacing: -1.5px;
+            line-height: 1;
+            margin-bottom: 0 !important;
         }
         
         .hero-text {
             color: #a8a8b8;
-            font-size: 1rem;
+            font-size: clamp(1rem, 1.6vw, 1.1rem);
             font-weight: 300;
             letter-spacing: 0.3px;
+            text-align: center;
+            line-height: 1.7;
+            margin: 0 auto !important;
+            max-width: 680px;
+        }
+
+        .search-helper {
+            color: #a8a8b8;
+            text-align: center;
+            font-size: 0.98rem;
+            margin: 0 0 1rem 0;
+        }
+
+        div[data-testid="stForm"] {
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid rgba(233, 9, 20, 0.18);
+            border-radius: 24px;
+            padding: 1.15rem 1rem 0.35rem;
+            backdrop-filter: blur(16px);
+            margin-bottom: 2.5rem;
+        }
+
+        div[data-testid="stFormSubmitButton"] {
+            max-width: 240px;
+            margin: 0.35rem auto 0.2rem;
         }
         
         /* Tabs modern */
         .stTabs [data-baseweb="tab-list"] {
-            border-bottom: 1px solid rgba(233, 9, 20, 0.1) !important;
-            gap: 2rem !important;
+            border: 1px solid rgba(233, 9, 20, 0.12) !important;
+            gap: 0.5rem !important;
+            justify-content: center;
+            width: fit-content;
+            margin: 0 auto 2rem auto;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 0.35rem !important;
+            border-radius: 999px;
         }
         
         .stTabs [data-baseweb="tab-list"] button {
@@ -76,8 +122,9 @@ def inject_app_styles() -> None:
             border-bottom: 3px solid transparent !important;
             font-weight: 700 !important;
             font-size: 1rem !important;
-            padding: 0.75rem 0 !important;
+            padding: 0.8rem 1.25rem !important;
             transition: all 0.3s ease !important;
+            border-radius: 999px !important;
         }
         
         .stTabs [data-baseweb="tab-list"] button:hover {
@@ -86,7 +133,9 @@ def inject_app_styles() -> None:
         
         .stTabs [aria-selected="true"] {
             color: #ff1e2d !important;
-            border-bottom: 3px solid #ff1e2d !important;
+            border-bottom: 3px solid transparent !important;
+            background: rgba(255, 30, 45, 0.12) !important;
+            box-shadow: 0 10px 26px rgba(255, 30, 45, 0.14) !important;
         }
         
         /* Search bar enhanced */
@@ -95,6 +144,7 @@ def inject_app_styles() -> None:
             gap: 1rem;
             margin-bottom: 2.5rem;
             align-items: flex-end;
+            justify-content: center;
         }
         
         .stTextInput input {
@@ -103,6 +153,7 @@ def inject_app_styles() -> None:
             border-radius: 12px !important;
             color: #e0e0e0 !important;
             font-size: 1rem !important;
+            min-height: 3.35rem !important;
             padding: 0.95rem 1.2rem !important;
             transition: all 0.3s ease !important;
         }
@@ -141,6 +192,7 @@ def inject_app_styles() -> None:
             grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
             gap: 1.5rem;
             margin: 2rem 0;
+            justify-content: center;
         }
         
         @media (max-width: 1024px) {
@@ -276,16 +328,18 @@ def inject_app_styles() -> None:
             font-weight: 800;
             margin: 2.5rem 0 0.5rem 0;
             letter-spacing: -0.5px;
+            text-align: center;
         }
         
         .section-desc {
             color: #a0a0b0;
             font-size: 0.95rem;
             margin-bottom: 1.5rem;
+            text-align: center;
         }
         
         /* Standard buttons */
-        .stButton>button {
+        .stButton>button, div[data-testid="stFormSubmitButton"] > button {
             background-color: #ff1e2d !important;
             color: white !important;
             border-radius: 10px !important;
@@ -294,9 +348,10 @@ def inject_app_styles() -> None:
             box-shadow: 0 8px 20px rgba(255, 30, 45, 0.3) !important;
             transition: all 0.3s ease !important;
             border: none !important;
+            min-height: 3.1rem !important;
         }
         
-        .stButton>button:hover {
+        .stButton>button:hover, div[data-testid="stFormSubmitButton"] > button:hover {
             background-color: #ff5559 !important;
             transform: translateY(-2px) !important;
             box-shadow: 0 12px 28px rgba(255, 30, 45, 0.4) !important;
@@ -331,6 +386,82 @@ def inject_app_styles() -> None:
         
         .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
             letter-spacing: -0.5px;
+        }
+
+        div[data-testid="stHorizontalBlock"] {
+            align-items: stretch;
+        }
+
+        @media (max-width: 768px) {
+            .block-container {
+                padding: 1rem 0.85rem 2rem !important;
+            }
+
+            .header-container {
+                margin-bottom: 1.75rem;
+                padding-bottom: 1.15rem;
+            }
+
+            .hero-text {
+                max-width: 100%;
+                line-height: 1.55;
+            }
+
+            .search-helper {
+                font-size: 0.92rem;
+            }
+
+            div[data-testid="stForm"] {
+                border-radius: 20px;
+                padding: 0.9rem 0.85rem 0.2rem;
+            }
+
+            div[data-testid="stFormSubmitButton"] {
+                max-width: 100%;
+            }
+
+            .stTabs [data-baseweb="tab-list"] {
+                width: 100%;
+                gap: 0.35rem !important;
+                padding: 0.35rem !important;
+                border-radius: 20px;
+            }
+
+            .stTabs [data-baseweb="tab-list"] button {
+                flex: 1 1 0;
+                justify-content: center;
+                padding: 0.8rem 0.75rem !important;
+                font-size: 0.95rem !important;
+            }
+
+            .section-title {
+                font-size: 1.4rem;
+                margin-top: 2rem;
+            }
+
+            div[data-testid="stHorizontalBlock"] {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+
+            div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+                min-width: 100% !important;
+                flex: 1 1 100% !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-container h1 {
+                font-size: 2rem !important;
+            }
+
+            .stTextInput input {
+                font-size: 0.96rem !important;
+            }
+
+            .stTabs [data-baseweb="tab-list"] button {
+                font-size: 0.9rem !important;
+            }
         }
         
         #MainMenu, header, footer, button[title="Open the menu"], button[title="Open details"] {
@@ -634,7 +765,8 @@ def fetch_season_data(client: OmdbClient, imdb_id: str, season: int) -> dict[str
 
 
 def render_favorites(client: OmdbClient) -> None:
-    st.header("⭐ Mes favoris")
+    st.markdown('<h3 class="section-title">⭐ Mes favoris</h3>', unsafe_allow_html=True)
+    st.markdown('<p class="section-desc">Retrouvez ici votre sélection enregistrée.</p>', unsafe_allow_html=True)
     favorites = load_favorites()
     if not favorites:
         st.info("Aucun favori pour le moment.")
@@ -700,23 +832,37 @@ def main() -> None:
         return
 
     # PAGE: SEARCH & FAVORITES
-    st.markdown('<div class="header-container"><h1>🎬 Movie Explorer</h1></div>', unsafe_allow_html=True)
-    st.markdown('<div style="margin-bottom:2.5rem;"><p class="hero-text">Découvrez films, séries et animations du monde entier.</p></div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div class="header-container">
+            <h1>🎬 Movie Explorer</h1>
+            <p class="hero-text">Découvrez films, séries et animations du monde entier.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     tab_search, tab_favorites = st.tabs(["🔍 Recherche", "⭐ Favoris"])
 
     with tab_search:
-        # Barre de recherche améliorée
-        search_col1, search_col2 = st.columns([5, 1])
-        with search_col1:
+        st.markdown(
+            '<p class="search-helper">Recherchez un titre et retrouvez rapidement où le consulter.</p>',
+            unsafe_allow_html=True,
+        )
+
+        with st.form("search_form", clear_on_submit=False):
             query = st.text_input(
-                "",
+                "Recherche",
                 value=st.session_state["search_query"],
                 placeholder="Exemple : Avatar, Breaking Bad, One Piece...",
-                key="search_input"
+                key="search_input",
+                label_visibility="collapsed",
             )
-        with search_col2:
-            search_clicked = st.button("Rechercher", type="primary", use_container_width=True, key="search_btn")
+            search_clicked = st.form_submit_button(
+                "Rechercher",
+                type="primary",
+                use_container_width=True,
+            )
 
         if search_clicked:
             st.session_state["search_query"] = query
