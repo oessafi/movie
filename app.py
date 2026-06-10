@@ -696,16 +696,10 @@ def render_home_hero() -> None:
         """
         <section class="hero-banner">
             <div class="hero-kicker">Streamline Your Movie Night</div>
-            <h1 class="hero-title">Un look streaming, un lecteur intégré, une seule liste de favoris.</h1>
-            <p class="hero-copy">
-                Recherche rapide, lecture dans l'application, sous-titres WebVTT et ambiance rouge/noir
-                inspirée des grandes plateformes de streaming.
-            </p>
             <div class="hero-badges">
                 <span>Films</span>
                 <span>Séries</span>
-                <span>Sous-titres .vtt</span>
-                <span>Ma liste</span>
+            
             </div>
         </section>
         """,
