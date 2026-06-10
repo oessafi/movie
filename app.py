@@ -4,6 +4,7 @@ from html import escape
 import math
 import os
 from typing import Any
+from urllib.parse import urlencode
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -313,10 +314,19 @@ def inject_app_styles() -> None:
         }
 
         .movie-card-poster {
+            position: relative;
             width: 100%;
             aspect-ratio: 2 / 3;
             overflow: hidden;
             background: #141414;
+        }
+
+        .movie-card-poster-link {
+            display: block;
+            width: 100%;
+            height: 100%;
+            color: inherit !important;
+            text-decoration: none !important;
         }
 
         .movie-card-poster img {
@@ -328,6 +338,11 @@ def inject_app_styles() -> None:
 
         .movie-card:hover .movie-card-poster img {
             transform: scale(1.06);
+        }
+
+        .movie-card:hover .poster-play-chip {
+            transform: translateY(-2px);
+            background: rgba(229, 9, 20, 0.94);
         }
 
         .movie-card-poster-fallback {
@@ -428,6 +443,26 @@ def inject_app_styles() -> None:
             line-height: 1;
             pointer-events: none;
             user-select: none;
+        }
+
+        .poster-play-chip {
+            position: absolute;
+            left: 0.9rem;
+            bottom: 0.9rem;
+            z-index: 3;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.48rem 0.78rem;
+            border-radius: 999px;
+            background: rgba(8, 8, 8, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: #ffffff;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.01rem;
+            backdrop-filter: blur(12px);
+            transition: transform 0.22s ease, background 0.22s ease;
         }
 
         .movie-card-content {
@@ -621,13 +656,61 @@ def _looks_like_vtt_url(url: str) -> bool:
     return normalized_url.endswith(".vtt")
 
 
-def open_movie_page(imdb_id: str, page: str) -> None:
+def _set_navigation_query_params(page: str = "", imdb_id: str = "", autoplay: bool = False) -> None:
+    params: dict[str, str] = {}
+    if page and imdb_id:
+        params["page"] = page
+        params["imdb"] = imdb_id
+        if autoplay:
+            params["autoplay"] = "1"
+
+    try:
+        st.query_params.clear()
+        for key, value in params.items():
+            st.query_params[key] = value
+    except Exception:
+        st.experimental_set_query_params(**params)
+
+
+def _read_navigation_query_param(name: str) -> str:
+    try:
+        value = st.query_params.get(name, "")
+    except Exception:
+        values = st.experimental_get_query_params().get(name, [])
+        value = values[0] if values else ""
+
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    return str(value).strip()
+
+
+def sync_navigation_state_from_query_params() -> None:
+    page = _read_navigation_query_param("page")
+    imdb_id = _read_navigation_query_param("imdb")
+    autoplay = _read_navigation_query_param("autoplay")
+
+    if page in {"details", "watch"} and imdb_id:
+        st.session_state["selected_imdb_id"] = imdb_id
+        st.session_state["current_page"] = page
+        st.session_state["autoplay_requested"] = autoplay == "1" or page == "watch"
+
+
+def build_watch_href(imdb_id: str) -> str:
+    if not imdb_id:
+        return "#"
+    return f"?{urlencode({'page': 'watch', 'imdb': imdb_id, 'autoplay': '1'})}"
+
+
+def open_movie_page(imdb_id: str, page: str, autoplay: bool | None = None) -> None:
     if not imdb_id:
         st.warning("Aucun identifiant IMDb disponible pour ce contenu.")
         return
 
+    should_autoplay = page == "watch" if autoplay is None else autoplay
     st.session_state["selected_imdb_id"] = imdb_id
     st.session_state["current_page"] = page
+    st.session_state["autoplay_requested"] = should_autoplay
+    _set_navigation_query_params(page=page, imdb_id=imdb_id, autoplay=should_autoplay)
     st.rerun()
 
 
@@ -899,6 +982,7 @@ def render_movie_grid_card(
     media_type = movie.get("Type", "N/A")
     imdb_id = movie.get("imdbID", "")
     poster = poster_url(movie)
+    watch_href = build_watch_href(imdb_id)
     
     key_suffix = f"_{context}" if context else ""
     fav_key = f"fav_{imdb_id}{key_suffix}"
@@ -908,7 +992,10 @@ def render_movie_grid_card(
     card_html = f"""
     <div class="movie-card">
         <div class="movie-card-poster">
-            {f'<img src="{poster}" alt="{escape(title)}">' if poster else build_fallback_poster_markup(title, year, media_type, context)}
+            <a class="movie-card-poster-link" href="{watch_href}">
+                {f'<img src="{poster}" alt="{escape(title)}">' if poster else build_fallback_poster_markup(title, year, media_type, context)}
+                <span class="poster-play-chip">▶ Lecture auto</span>
+            </a>
         </div>
         <div class="movie-card-content">
             <div class="movie-card-title">{title}</div>
@@ -942,7 +1029,7 @@ def render_movie_grid_card(
     st.markdown("</div></div>", unsafe_allow_html=True)
 
 
-def render_player_section(details: dict[str, Any]) -> None:
+def render_player_section(details: dict[str, Any], autoplay: bool = False) -> None:
     imdb_id = details.get("imdbID", "").strip()
     source = get_player_source(imdb_id) or {}
     current_video_url = source.get("video_url", "")
@@ -1018,15 +1105,53 @@ def render_player_section(details: dict[str, Any]) -> None:
         )
 
     poster = poster_url(details) or ""
+    autoplay_attribute = "autoplay" if autoplay else ""
     video_markup = f"""
     <div style="background:rgba(255,255,255,0.03);padding:1rem;border-radius:18px;border:1px solid rgba(233,9,20,0.18);">
-      <video controls playsinline preload="metadata" crossorigin="anonymous" poster="{escape(poster)}"
+      <video id="movie-player" controls playsinline preload="metadata" crossorigin="anonymous" poster="{escape(poster)}" {autoplay_attribute}
         style="width:100%;border-radius:12px;background:#000;max-height:70vh;">
         <source src="{escape(current_video_url)}">
         {subtitle_track}
         Votre navigateur ne supporte pas la lecture vidéo HTML5.
       </video>
     </div>
+    <script>
+      const video = document.getElementById("movie-player");
+      const enableSubtitles = () => {{
+        if (!video || !video.textTracks) {{
+          return;
+        }}
+        for (let index = 0; index < video.textTracks.length; index += 1) {{
+          video.textTracks[index].mode = index === 0 ? "showing" : "disabled";
+        }}
+      }};
+
+      const tryAutoplay = async () => {{
+        if (!video || !{str(autoplay).lower()}) {{
+          enableSubtitles();
+          return;
+        }}
+        enableSubtitles();
+        try {{
+          await video.play();
+        }} catch (error) {{
+          video.muted = true;
+          video.defaultMuted = true;
+          try {{
+            await video.play();
+          }} catch (mutedError) {{
+            console.debug("Autoplay blocked", mutedError);
+          }}
+        }}
+      }};
+
+      if (video) {{
+        video.addEventListener("loadedmetadata", tryAutoplay, {{ once: true }});
+        video.addEventListener("loadeddata", enableSubtitles, {{ once: true }});
+        enableSubtitles();
+        window.setTimeout(enableSubtitles, 300);
+      }}
+    </script>
     """
     components.html(video_markup, height=620, scrolling=False)
 
@@ -1191,6 +1316,10 @@ def main() -> None:
         st.session_state["search_page"] = 1
     if "search_media_type" not in st.session_state:
         st.session_state["search_media_type"] = "all"
+    if "autoplay_requested" not in st.session_state:
+        st.session_state["autoplay_requested"] = False
+
+    sync_navigation_state_from_query_params()
 
     api_keys = get_api_keys()
     if not api_keys:
@@ -1216,6 +1345,8 @@ def main() -> None:
         if st.button("← Retour à la recherche", key="btn_back_to_search"):
             st.session_state["current_page"] = "search"
             st.session_state["selected_imdb_id"] = None
+            st.session_state["autoplay_requested"] = False
+            _set_navigation_query_params()
             st.rerun()
         
         try:
@@ -1230,17 +1361,18 @@ def main() -> None:
         nav_col_1, nav_col_2 = st.columns(2)
         with nav_col_1:
             if st.button("← Retour aux détails", key="btn_back_to_details", use_container_width=True):
-                st.session_state["current_page"] = "details"
-                st.rerun()
+                open_movie_page(st.session_state["selected_imdb_id"], "details", autoplay=False)
         with nav_col_2:
             if st.button("⌂ Retour à la recherche", key="btn_back_to_search_from_watch", use_container_width=True):
                 st.session_state["current_page"] = "search"
                 st.session_state["selected_imdb_id"] = None
+                st.session_state["autoplay_requested"] = False
+                _set_navigation_query_params()
                 st.rerun()
 
         try:
             details = client.get_details(st.session_state["selected_imdb_id"])
-            render_player_section(details)
+            render_player_section(details, autoplay=st.session_state.get("autoplay_requested", False))
             render_details(details, client, show_watch_button=False)
         except OmdbError as exc:
             st.error(str(exc))
