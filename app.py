@@ -4,7 +4,6 @@ from html import escape
 import math
 import os
 from typing import Any
-from urllib.parse import urlencode
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -16,6 +15,8 @@ from omdb_client import OmdbClient, OmdbError
 from player_sources import get_player_source
 
 load_dotenv()
+
+PLAYIMDB_BASE_URL = "https://playimdb.com"
 
 st.set_page_config(
     page_title="Movie Explorer",
@@ -91,45 +92,6 @@ def inject_app_styles() -> None:
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .auth-chip {
-            min-width: 235px;
-            padding: 0.8rem 1rem;
-            border-radius: 18px;
-            text-align: right;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .auth-chip span {
-            display: block;
-            color: rgba(255, 255, 255, 0.62);
-            font-size: 0.74rem;
-            letter-spacing: 0.12rem;
-            text-transform: uppercase;
-            margin-bottom: 0.25rem;
-        }
-
-        .auth-chip strong {
-            color: #ffffff;
-            font-size: 0.98rem;
-            word-break: break-word;
-        }
-
-        .auth-chip--connected {
-            border-color: rgba(76, 175, 80, 0.28);
-            background: linear-gradient(135deg, rgba(17, 56, 28, 0.82), rgba(13, 24, 16, 0.92));
-        }
-
-        .auth-chip--guest {
-            border-color: rgba(229, 9, 20, 0.22);
-            background: linear-gradient(135deg, rgba(58, 15, 18, 0.8), rgba(19, 14, 15, 0.92));
-        }
-
-        .auth-chip--required {
-            border-color: rgba(255, 193, 7, 0.26);
-            background: linear-gradient(135deg, rgba(53, 39, 8, 0.82), rgba(22, 18, 10, 0.92));
         }
 
         .hero-banner {
@@ -509,6 +471,7 @@ def inject_app_styles() -> None:
         }
 
         .stButton > button,
+        div[data-testid="stLinkButton"] > a,
         div[data-testid="stFormSubmitButton"] > button {
             background: linear-gradient(135deg, #e50914 0%, #b00610 100%) !important;
             color: #ffffff !important;
@@ -523,6 +486,7 @@ def inject_app_styles() -> None:
         }
 
         .stButton > button:hover,
+        div[data-testid="stLinkButton"] > a:hover,
         div[data-testid="stFormSubmitButton"] > button:hover {
             transform: translateY(-2px) !important;
             box-shadow: 0 18px 34px rgba(229, 9, 20, 0.3) !important;
@@ -563,11 +527,6 @@ def inject_app_styles() -> None:
             .netflix-nav {
                 flex-direction: column;
                 align-items: flex-start;
-            }
-
-            .auth-chip {
-                width: 100%;
-                text-align: left;
             }
 
             .hero-banner {
@@ -690,10 +649,11 @@ def sync_navigation_state_from_query_params() -> None:
         st.session_state["autoplay_requested"] = autoplay == "1" or page == "watch"
 
 
-def build_watch_href(imdb_id: str) -> str:
-    if not imdb_id:
-        return "#"
-    return f"?{urlencode({'page': 'watch', 'imdb': imdb_id, 'autoplay': '1'})}"
+def build_playimdb_url(imdb_id: str) -> str:
+    normalized_imdb_id = imdb_id.strip().strip("/")
+    if not normalized_imdb_id:
+        return PLAYIMDB_BASE_URL
+    return f"{PLAYIMDB_BASE_URL}/{normalized_imdb_id}"
 
 
 def build_imdb_title_url(imdb_id: str) -> str:
@@ -713,22 +673,9 @@ def open_movie_page(imdb_id: str, page: str, autoplay: bool | None = None) -> No
     st.rerun()
 
 
-def render_navbar(authenticated_user: Any | None) -> None:
-    if authenticated_user:
-        chip_class = "auth-chip auth-chip--connected"
-        chip_label = "Connexion"
-        chip_value = escape(authenticated_user.user_id)
-    elif auth_is_required():
-        chip_class = "auth-chip auth-chip--required"
-        chip_label = "Connexion"
-        chip_value = "Se connecter via proxy"
-    else:
-        chip_class = "auth-chip auth-chip--guest"
-        chip_label = "Connexion"
-        chip_value = "Non connecte"
-
+def render_navbar() -> None:
     st.markdown(
-        f"""
+        """
         <div class="netflix-nav">
             <div class="netflix-nav-left">
                 <div class="brand-wordmark">MOVIE EXPLORER</div>
@@ -737,10 +684,6 @@ def render_navbar(authenticated_user: Any | None) -> None:
                     <span>Ma Liste</span>
                     <span>Lecture VTT</span>
                 </div>
-            </div>
-            <div class="{chip_class}">
-                <span>{chip_label}</span>
-                <strong>{chip_value}</strong>
             </div>
         </div>
         """,
@@ -779,18 +722,78 @@ def poster_url(movie: dict[str, Any]) -> str | None:
 
 FALLBACK_TRENDING_BY_TYPE: dict[str, list[dict[str, str]]] = {
     "movie": [
-        {"Title": "Avatar", "Year": "2009", "Type": "movie", "imdbID": "tt0499549", "Poster": "N/A"},
-        {"Title": "Dune", "Year": "2021", "Type": "movie", "imdbID": "tt1160419", "Poster": "N/A"},
-        {"Title": "Inception", "Year": "2010", "Type": "movie", "imdbID": "tt1375666", "Poster": "N/A"},
-        {"Title": "The Dark Knight", "Year": "2008", "Type": "movie", "imdbID": "tt0468569", "Poster": "N/A"},
-        {"Title": "Titanic", "Year": "1997", "Type": "movie", "imdbID": "tt0120338", "Poster": "N/A"},
+        {
+            "Title": "Avatar",
+            "Year": "2009",
+            "Type": "movie",
+            "imdbID": "tt0499549",
+            "Poster": "https://m.media-amazon.com/images/M/MV5BMDEzMmQwZjctZWU2My00MWNlLWE0NjItMDJlYTRlNGJiZjcyXkEyXkFqcGc@._V1_SX300.jpg",
+        },
+        {
+            "Title": "Dune: Part One",
+            "Year": "2021",
+            "Type": "movie",
+            "imdbID": "tt1160419",
+            "Poster": "https://m.media-amazon.com/images/M/MV5BNWIyNmU5MGYtZDZmNi00ZjAwLWJlYjgtZTc0ZGIxMDE4ZGYwXkEyXkFqcGc@._V1_QL75_UY562_CR1,0,380,562_.jpg",
+        },
+        {
+            "Title": "Inception",
+            "Year": "2010",
+            "Type": "movie",
+            "imdbID": "tt1375666",
+            "Poster": "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_QL75_UX380_CR0,0,380,562_.jpg",
+        },
+        {
+            "Title": "The Dark Knight",
+            "Year": "2008",
+            "Type": "movie",
+            "imdbID": "tt0468569",
+            "Poster": "https://m.media-amazon.com/images/M/MV5BMTMxNTMwODM0NF5BMl5BanBnXkFtZTcwODAyMTk2Mw@@._V1_QL75_UX380_CR0,0,380,562_.jpg",
+        },
+        {
+            "Title": "Titanic",
+            "Year": "1997",
+            "Type": "movie",
+            "imdbID": "tt0120338",
+            "Poster": "https://m.media-amazon.com/images/M/MV5BYzYyN2FiZmUtYWYzMy00MzViLWJkZTMtOGY1ZjgzNWMwN2YxXkEyXkFqcGc@._V1_QL75_UX380_CR0,2,380,562_.jpg",
+        },
     ],
     "series": [
-        {"Title": "Stranger Things", "Year": "2016-", "Type": "series", "imdbID": "tt4574334", "Poster": "N/A"},
-        {"Title": "House of the Dragon", "Year": "2022-", "Type": "series", "imdbID": "tt11198330", "Poster": "N/A"},
-        {"Title": "The Witcher", "Year": "2019-", "Type": "series", "imdbID": "tt5180504", "Poster": "N/A"},
-        {"Title": "One Piece", "Year": "2023-", "Type": "series", "imdbID": "tt11737520", "Poster": "N/A"},
-        {"Title": "Squid Game", "Year": "2021-", "Type": "series", "imdbID": "tt10919420", "Poster": "N/A"},
+        {
+            "Title": "Stranger Things",
+            "Year": "2016-2025",
+            "Type": "series",
+            "imdbID": "tt4574334",
+            "Poster": "https://m.media-amazon.com/images/M/MV5BNjRiMTA4NWUtNmE0ZC00NGM0LWJhMDUtZWIzMDM5ZDIzNTg3XkEyXkFqcGc@._V1_QL75_UY562_CR35,0,380,562_.jpg",
+        },
+        {
+            "Title": "House of the Dragon",
+            "Year": "2022-",
+            "Type": "series",
+            "imdbID": "tt11198330",
+            "Poster": "https://m.media-amazon.com/images/M/MV5BZGM4MTczODQtNGIxOC00Y2U2LTk1YmItNzA2N2VhYmE0Y2YwXkEyXkFqcGc@._V1_QL75_UX380_CR0,0,380,562_.jpg",
+        },
+        {
+            "Title": "The Witcher",
+            "Year": "2019-",
+            "Type": "series",
+            "imdbID": "tt5180504",
+            "Poster": "https://m.media-amazon.com/images/M/MV5BOTQzMzNmMzUtODgwNS00YTdhLTg5N2MtOWU1YTc4YWY3NjRlXkEyXkFqcGc@._V1_SX300.jpg",
+        },
+        {
+            "Title": "One Piece",
+            "Year": "2023-",
+            "Type": "series",
+            "imdbID": "tt11737520",
+            "Poster": "https://m.media-amazon.com/images/M/MV5BNDk5MDFlYjYtZjQ5ZS00ZjhkLWJkYmMtYzhmZjkyOWExY2M3XkEyXkFqcGc@._V1_QL75_UX380_CR0,0,380,562_.jpg",
+        },
+        {
+            "Title": "Squid Game",
+            "Year": "2021-2025",
+            "Type": "series",
+            "imdbID": "tt10919420",
+            "Poster": "https://m.media-amazon.com/images/M/MV5BYTU3ZDVhNmMtMDVlNC00MDc0LTgwNDMtYWE5MTI2ZGI4YWIwXkEyXkFqcGc@._V1_QL75_UX380_CR0,0,380,562_.jpg",
+        },
     ],
 }
 
@@ -931,15 +934,17 @@ def render_movie_card(
             key_suffix = f"_{context}" if context else ""
             fav_key = f"fav_{imdb_id}{key_suffix}"
             details_key = f"details_{imdb_id}{key_suffix}"
-            watch_key = f"watch_{imdb_id}{key_suffix}"
 
             button_col_1, button_col_2, button_col_3 = st.columns([1, 1, 1])
             with button_col_1:
                 if st.button("📋 Détails", key=details_key, use_container_width=True):
                     open_movie_page(imdb_id, "details")
             with button_col_2:
-                if st.button("▶ Regarder", key=watch_key, use_container_width=True):
-                    open_movie_page(imdb_id, "watch")
+                st.link_button(
+                    "▶ Regarder",
+                    build_playimdb_url(imdb_id),
+                    use_container_width=True,
+                )
             with button_col_3:
                 if st.button("⭐ Favoris", key=fav_key, use_container_width=True):
                     added = add_favorite(movie)
@@ -981,7 +986,7 @@ def render_movie_grid_card(
     media_type = movie.get("Type", "N/A")
     imdb_id = movie.get("imdbID", "")
     poster = poster_url(movie)
-    watch_href = build_watch_href(imdb_id)
+    watch_href = build_playimdb_url(imdb_id)
     
     key_suffix = f"_{context}" if context else ""
     fav_key = f"fav_{imdb_id}{key_suffix}"
@@ -991,9 +996,9 @@ def render_movie_grid_card(
     card_html = f"""
     <div class="movie-card">
         <div class="movie-card-poster">
-            <a class="movie-card-poster-link" href="{watch_href}">
+            <a class="movie-card-poster-link" href="{escape(watch_href, quote=True)}">
                 {f'<img src="{poster}" alt="{escape(title)}">' if poster else build_fallback_poster_markup(title, year, media_type, context)}
-                <span class="poster-play-chip">▶ Lecture auto</span>
+                <span class="poster-play-chip">▶ PlayIMDb</span>
             </a>
         </div>
         <div class="movie-card-content">
@@ -1014,8 +1019,12 @@ def render_movie_grid_card(
             open_movie_page(imdb_id, "details")
     
     with action_col2:
-        if st.button("▶", key=f"watch_small_{imdb_id}{key_suffix}", help="Regarder", use_container_width=True):
-            open_movie_page(imdb_id, "watch")
+        st.link_button(
+            "▶",
+            build_playimdb_url(imdb_id),
+            help="Regarder sur PlayIMDb",
+            use_container_width=True,
+        )
     
     with action_col3:
         if st.button("⭐", key=f"fav_small_{fav_key}", help="Favoris", use_container_width=True):
@@ -1140,8 +1149,11 @@ def render_details(details: dict[str, Any], client: OmdbClient, show_watch_butto
 
     imdb_id = details.get("imdbID", "")
     if show_watch_button and imdb_id:
-        if st.button("▶ Ouvrir le lecteur", key=f"open_watch_{imdb_id}", use_container_width=False):
-            open_movie_page(imdb_id, "watch")
+        st.link_button(
+            "▶ Ouvrir sur PlayIMDb",
+            build_playimdb_url(imdb_id),
+            use_container_width=False,
+        )
 
     ratings = details.get("Ratings", [])
     if ratings:
@@ -1239,8 +1251,7 @@ def render_favorites(client: OmdbClient) -> None:
             if st.button("📋 Détails", key=f"fav_details_{imdb_id}"):
                 open_movie_page(imdb_id, "details")
         with col_4:
-            if st.button("▶ Regarder", key=f"watch_{imdb_id}"):
-                open_movie_page(imdb_id, "watch")
+            st.link_button("▶ Regarder", build_playimdb_url(imdb_id))
         with col_5:
             if st.button("❌ Supprimer", key=f"remove_{imdb_id}"):
                 remove_favorite(imdb_id)
@@ -1284,7 +1295,7 @@ def main() -> None:
         st.stop()
 
     client = OmdbClient(api_keys=tuple(api_keys))
-    render_navbar(authenticated_user)
+    render_navbar()
 
     # PAGE: DETAILS
     if st.session_state["current_page"] == "details" and st.session_state["selected_imdb_id"]:
