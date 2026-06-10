@@ -595,6 +595,24 @@ def poster_url(movie: dict[str, Any]) -> str | None:
     return None
 
 
+FALLBACK_TRENDING_BY_TYPE: dict[str, list[dict[str, str]]] = {
+    "movie": [
+        {"Title": "Avatar", "Year": "2009", "Type": "movie", "imdbID": "tt0499549", "Poster": "N/A"},
+        {"Title": "Dune", "Year": "2021", "Type": "movie", "imdbID": "tt1160419", "Poster": "N/A"},
+        {"Title": "Inception", "Year": "2010", "Type": "movie", "imdbID": "tt1375666", "Poster": "N/A"},
+        {"Title": "The Dark Knight", "Year": "2008", "Type": "movie", "imdbID": "tt0468569", "Poster": "N/A"},
+        {"Title": "Titanic", "Year": "1997", "Type": "movie", "imdbID": "tt0120338", "Poster": "N/A"},
+    ],
+    "series": [
+        {"Title": "Stranger Things", "Year": "2016-", "Type": "series", "imdbID": "tt4574334", "Poster": "N/A"},
+        {"Title": "House of the Dragon", "Year": "2022-", "Type": "series", "imdbID": "tt11198330", "Poster": "N/A"},
+        {"Title": "The Witcher", "Year": "2019-", "Type": "series", "imdbID": "tt5180504", "Poster": "N/A"},
+        {"Title": "One Piece", "Year": "2023-", "Type": "series", "imdbID": "tt11737520", "Poster": "N/A"},
+        {"Title": "Squid Game", "Year": "2021-", "Type": "series", "imdbID": "tt10919420", "Poster": "N/A"},
+    ],
+}
+
+
 def fetch_trending_titles(client: OmdbClient, titles: list[str], media_type: str) -> tuple[list[dict[str, Any]], str | None]:
     results: list[dict[str, Any]] = []
     first_error: str | None = None
@@ -621,6 +639,10 @@ def fetch_trending_titles(client: OmdbClient, titles: list[str], media_type: str
     return results, first_error
 
 
+def fallback_trending_titles(media_type: str) -> list[dict[str, Any]]:
+    return [dict(item) for item in FALLBACK_TRENDING_BY_TYPE.get(media_type, [])]
+
+
 def render_trending_section(client: OmdbClient) -> None:
     st.markdown('<h3 class="section-title">En ce moment</h3>', unsafe_allow_html=True)
     st.markdown('<p class="section-desc">Quelques titres forts pour remplir rapidement l\'écran d\'accueil.</p>', unsafe_allow_html=True)
@@ -645,18 +667,24 @@ def render_trending_section(client: OmdbClient) -> None:
         movies, movies_error = fetch_trending_titles(client, trending_movies, "movie")
         if movies:
             render_movies_grid(movies, client, context="trending_movie")
-        elif movies_error:
-            st.warning(f"Impossible de charger les tendances films: {movies_error}")
         else:
-            st.info("Aucun film à afficher.")
+            fallback_movies = fallback_trending_titles("movie")
+            if movies_error:
+                st.warning(f"Impossible de charger OMDb pour les films. Affichage d'une sélection locale. Détail: {movies_error}")
+            else:
+                st.info("Affichage d'une sélection locale de films.")
+            render_movies_grid(fallback_movies, client, context="trending_movie_fallback")
     with tabs[1]:
         series, series_error = fetch_trending_titles(client, trending_series, "series")
         if series:
             render_movies_grid(series, client, context="trending_serie")
-        elif series_error:
-            st.warning(f"Impossible de charger les tendances séries: {series_error}")
         else:
-            st.info("Aucune série à afficher.")
+            fallback_series = fallback_trending_titles("series")
+            if series_error:
+                st.warning(f"Impossible de charger OMDb pour les séries. Affichage d'une sélection locale. Détail: {series_error}")
+            else:
+                st.info("Affichage d'une sélection locale de séries.")
+            render_movies_grid(fallback_series, client, context="trending_serie_fallback")
 
 
 def render_movie_card(
