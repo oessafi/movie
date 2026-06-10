@@ -505,14 +505,14 @@ def get_api_keys() -> list[str]:
     env_multi = os.getenv("OMDB_API_KEYS", "")
     env_single = os.getenv("OMDB_API_KEY", "")
 
-    api_keys = (
-        _normalize_api_keys(secret_multi)
-        or _normalize_api_keys(env_multi)
-        or _normalize_api_keys(secret_single)
-        or _normalize_api_keys(env_single)
-    )
+    api_keys = [
+        *_normalize_api_keys(secret_multi),
+        *_normalize_api_keys(env_multi),
+        *_normalize_api_keys(secret_single),
+        *_normalize_api_keys(env_single),
+    ]
 
-    # Remove duplicates while keeping the original order.
+    # Merge every configured source, then remove duplicates while keeping the original order.
     return list(dict.fromkeys(api_keys))
 
 
