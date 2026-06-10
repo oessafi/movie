@@ -647,44 +647,11 @@ def render_trending_section(client: OmdbClient) -> None:
     st.markdown('<h3 class="section-title">En ce moment</h3>', unsafe_allow_html=True)
     st.markdown('<p class="section-desc">Quelques titres forts pour remplir rapidement l\'écran d\'accueil.</p>', unsafe_allow_html=True)
 
-    trending_movies = [
-        "Avatar",
-        "Dune",
-        "Inception",
-        "The Dark Knight",
-        "Titanic",
-    ]
-    trending_series = [
-        "Stranger Things",
-        "House of the Dragon",
-        "The Witcher",
-        "One Piece",
-        "Squid Game",
-    ]
-
     tabs = st.tabs(["🎬 Films tendance", "📺 Séries tendance"])
     with tabs[0]:
-        movies, movies_error = fetch_trending_titles(client, trending_movies, "movie")
-        if movies:
-            render_movies_grid(movies, client, context="trending_movie")
-        else:
-            fallback_movies = fallback_trending_titles("movie")
-            if movies_error:
-                st.warning(f"Impossible de charger OMDb pour les films. Affichage d'une sélection locale. Détail: {movies_error}")
-            else:
-                st.info("Affichage d'une sélection locale de films.")
-            render_movies_grid(fallback_movies, client, context="trending_movie_fallback")
+        render_movies_grid(fallback_trending_titles("movie"), client, context="trending_movie_fallback")
     with tabs[1]:
-        series, series_error = fetch_trending_titles(client, trending_series, "series")
-        if series:
-            render_movies_grid(series, client, context="trending_serie")
-        else:
-            fallback_series = fallback_trending_titles("series")
-            if series_error:
-                st.warning(f"Impossible de charger OMDb pour les séries. Affichage d'une sélection locale. Détail: {series_error}")
-            else:
-                st.info("Affichage d'une sélection locale de séries.")
-            render_movies_grid(fallback_series, client, context="trending_serie_fallback")
+        render_movies_grid(fallback_trending_titles("series"), client, context="trending_serie_fallback")
 
 
 def render_movie_card(
