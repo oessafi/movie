@@ -595,16 +595,30 @@ def poster_url(movie: dict[str, Any]) -> str | None:
     return None
 
 
-def fetch_trending_titles(client: OmdbClient, titles: list[str], media_type: str) -> list[dict[str, Any]]:
+def fetch_trending_titles(client: OmdbClient, titles: list[str], media_type: str) -> tuple[list[dict[str, Any]], str | None]:
     results: list[dict[str, Any]] = []
+    first_error: str | None = None
+
     for title in titles:
         try:
             search_results = client.search_movies(title, page=1, media_type=media_type).get("Search", [])
             if search_results:
                 results.append(search_results[0])
-        except OmdbError:
-            continue
-    return results
+                continue
+
+            # Fallback exact match: OMDb search can occasionally miss a title even when details exist.
+            exact_match = client.get_by_exact_title(title)
+            if exact_match:
+                results.append(exact_match)
+        except OmdbError as exc:
+            if first_error is None:
+                first_error = str(exc)
+
+            lowered_error = str(exc).lower()
+            if "cles api omdb configurees" in lowered_error or "cle api omdb manquante" in lowered_error:
+                break
+
+    return results, first_error
 
 
 def render_trending_section(client: OmdbClient) -> None:
@@ -628,11 +642,21 @@ def render_trending_section(client: OmdbClient) -> None:
 
     tabs = st.tabs(["🎬 Films tendance", "📺 Séries tendance"])
     with tabs[0]:
-        movies = fetch_trending_titles(client, trending_movies, "movie")
-        render_movies_grid(movies, client, context="trending_movie")
+        movies, movies_error = fetch_trending_titles(client, trending_movies, "movie")
+        if movies:
+            render_movies_grid(movies, client, context="trending_movie")
+        elif movies_error:
+            st.warning(f"Impossible de charger les tendances films: {movies_error}")
+        else:
+            st.info("Aucun film à afficher.")
     with tabs[1]:
-        series = fetch_trending_titles(client, trending_series, "series")
-        render_movies_grid(series, client, context="trending_serie")
+        series, series_error = fetch_trending_titles(client, trending_series, "series")
+        if series:
+            render_movies_grid(series, client, context="trending_serie")
+        elif series_error:
+            st.warning(f"Impossible de charger les tendances séries: {series_error}")
+        else:
+            st.info("Aucune série à afficher.")
 
 
 def render_movie_card(
