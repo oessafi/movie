@@ -1,5 +1,6 @@
 .env
 favorites.json
+player_sources.json
 __pycache__/
 *.pyc
 .venv/

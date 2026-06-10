@@ -6,58 +6,73 @@ from pathlib import Path
 from typing import Any
 
 FAVORITES_FILE = Path("favorites.json")
-DEFAULT_USER_ID = "__default__"
 
 
-def _normalize_user_id(user_id: str | None) -> str:
-    return user_id.strip() if user_id and user_id.strip() else DEFAULT_USER_ID
+def _normalize_favorites(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen_ids: set[str] = set()
+    normalized: list[dict[str, Any]] = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        imdb_id = str(item.get("imdbID", "")).strip()
+        if not imdb_id or imdb_id in seen_ids:
+            continue
+
+        seen_ids.add(imdb_id)
+        normalized.append(
+            {
+                "Title": item.get("Title"),
+                "Year": item.get("Year"),
+                "Type": item.get("Type"),
+                "imdbID": imdb_id,
+                "Poster": item.get("Poster"),
+            }
+        )
+
+    return normalized
 
 
-def _load_storage() -> dict[str, list[dict[str, Any]]]:
+def _load_storage() -> list[dict[str, Any]]:
     if not FAVORITES_FILE.exists():
-        return {}
+        return []
 
     try:
         data = json.loads(FAVORITES_FILE.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
-        return {}
+        return []
 
     if isinstance(data, list):
-        return {DEFAULT_USER_ID: data}
+        return _normalize_favorites(data)
 
     if not isinstance(data, dict):
-        return {}
+        return []
 
-    storage: dict[str, list[dict[str, Any]]] = {}
-    for raw_user_id, favorites in data.items():
+    merged_favorites: list[dict[str, Any]] = []
+    for favorites in data.values():
         if isinstance(favorites, list):
-            storage[str(raw_user_id)] = favorites
-    return storage
+            merged_favorites.extend(favorites)
+    return _normalize_favorites(merged_favorites)
 
 
-def _save_storage(storage: dict[str, list[dict[str, Any]]]) -> None:
-    FAVORITES_FILE.write_text(json.dumps(storage, ensure_ascii=False, indent=2), encoding="utf-8")
+def _save_storage(storage: list[dict[str, Any]]) -> None:
+    FAVORITES_FILE.write_text(
+        json.dumps(_normalize_favorites(storage), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
 
 def load_favorites(user_id: str | None = None) -> list[dict[str, Any]]:
-    storage = _load_storage()
-    return storage.get(_normalize_user_id(user_id), [])
+    return _load_storage()
 
 
 def save_favorites(favorites: list[dict[str, Any]], user_id: str | None = None) -> None:
-    storage = _load_storage()
-    normalized_user_id = _normalize_user_id(user_id)
-
-    if favorites:
-        storage[normalized_user_id] = favorites
-    else:
-        storage.pop(normalized_user_id, None)
-
-    _save_storage(storage)
+    _save_storage(favorites)
 
 
 def add_favorite(movie: dict[str, Any], user_id: str | None = None) -> bool:
-    favorites = load_favorites(user_id=user_id)
+    favorites = load_favorites()
     imdb_id = movie.get("imdbID")
     if not imdb_id:
         return False
@@ -73,10 +88,10 @@ def add_favorite(movie: dict[str, Any], user_id: str | None = None) -> bool:
             "Poster": movie.get("Poster"),
         }
     )
-    save_favorites(favorites, user_id=user_id)
+    save_favorites(favorites)
     return True
 
 
 def remove_favorite(imdb_id: str, user_id: str | None = None) -> None:
-    favorites = [item for item in load_favorites(user_id=user_id) if item.get("imdbID") != imdb_id]
-    save_favorites(favorites, user_id=user_id)
+    favorites = [item for item in load_favorites() if item.get("imdbID") != imdb_id]
+    save_favorites(favorites)

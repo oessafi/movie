@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+from html import escape
 import math
 import os
 from typing import Any
 
 import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
-import requests
 
 from auth import auth_is_required, get_authenticated_user
 from favorites import add_favorite, load_favorites, remove_favorite
 from omdb_client import OmdbClient, OmdbError
+from player_sources import clear_player_source, get_player_source, save_player_source
 
 load_dotenv()
 
@@ -25,396 +27,427 @@ def inject_app_styles() -> None:
         """
         <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         .stApp {
-            background: linear-gradient(135deg, #0f0f1e 0%, #15162b 50%, #0f0f1e 100%);
-            color: #e0e0e0;
+            background:
+                radial-gradient(circle at top right, rgba(229, 9, 20, 0.26), transparent 26%),
+                radial-gradient(circle at top left, rgba(255, 255, 255, 0.04), transparent 18%),
+                linear-gradient(180deg, #140607 0%, #090909 20%, #070707 100%);
+            color: #f5f5f1;
         }
-        
+
         .block-container {
             width: 100%;
-            max-width: 1120px !important;
-            padding: 2rem 1rem 3rem !important;
+            max-width: 1320px !important;
+            padding: 1rem 1.15rem 3rem !important;
             margin: 0 auto !important;
         }
-        
-        .main-wrapper {
-            width: 100%;
+
+        .netflix-nav {
+            position: sticky;
+            top: 0.85rem;
+            z-index: 999;
             display: flex;
-            justify-content: center;
-            padding: 2.5rem 1rem;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem 1.2rem;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background:
+                linear-gradient(90deg, rgba(12, 12, 12, 0.95) 0%, rgba(18, 18, 18, 0.88) 55%, rgba(34, 8, 11, 0.9) 100%);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.32);
         }
-        
-        .main-content {
-            width: 100%;
-            max-width: 1200px;
-            padding: 0;
-        }
-        
-        .css-18e3th9 { padding-top: 0 !important; }
-        
-        /* Header modern */
-        .header-container {
-            margin-bottom: 2.25rem;
-            border-bottom: 1px solid rgba(233, 9, 20, 0.15);
-            padding-bottom: 1.5rem;
-            text-align: center;
+
+        .netflix-nav-left {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .brand-wordmark {
+            color: #e50914;
+            font-size: clamp(1.55rem, 3vw, 2.2rem);
+            font-weight: 900;
+            letter-spacing: 0.18rem;
+            line-height: 1;
+        }
+
+        .nav-mini {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.7rem;
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 0.84rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12rem;
+        }
+
+        .nav-mini span {
+            padding: 0.28rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .auth-chip {
+            min-width: 235px;
+            padding: 0.8rem 1rem;
+            border-radius: 18px;
+            text-align: right;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .auth-chip span {
+            display: block;
+            color: rgba(255, 255, 255, 0.62);
+            font-size: 0.74rem;
+            letter-spacing: 0.12rem;
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        .auth-chip strong {
+            color: #ffffff;
+            font-size: 0.98rem;
+            word-break: break-word;
+        }
+
+        .auth-chip--connected {
+            border-color: rgba(76, 175, 80, 0.28);
+            background: linear-gradient(135deg, rgba(17, 56, 28, 0.82), rgba(13, 24, 16, 0.92));
+        }
+
+        .auth-chip--guest {
+            border-color: rgba(229, 9, 20, 0.22);
+            background: linear-gradient(135deg, rgba(58, 15, 18, 0.8), rgba(19, 14, 15, 0.92));
+        }
+
+        .auth-chip--required {
+            border-color: rgba(255, 193, 7, 0.26);
+            background: linear-gradient(135deg, rgba(53, 39, 8, 0.82), rgba(22, 18, 10, 0.92));
+        }
+
+        .hero-banner {
+            position: relative;
+            overflow: hidden;
+            margin: 0.5rem 0 1.8rem;
+            padding: clamp(2rem, 4vw, 3rem);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background:
+                linear-gradient(120deg, rgba(0, 0, 0, 0.92) 0%, rgba(14, 14, 14, 0.86) 44%, rgba(88, 0, 10, 0.62) 100%);
+            box-shadow: 0 26px 80px rgba(0, 0, 0, 0.34);
+        }
+
+        .hero-banner::before,
+        .hero-banner::after {
+            content: "";
+            position: absolute;
+            border-radius: 999px;
+            filter: blur(6px);
+        }
+
+        .hero-banner::before {
+            width: 260px;
+            height: 260px;
+            right: -70px;
+            top: -40px;
+            background: radial-gradient(circle, rgba(229, 9, 20, 0.42) 0%, rgba(229, 9, 20, 0) 70%);
+        }
+
+        .hero-banner::after {
+            width: 200px;
+            height: 200px;
+            right: 18%;
+            bottom: -90px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 70%);
+        }
+
+        .hero-kicker {
+            color: #b4b4b4;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.2rem;
+            text-transform: uppercase;
+            margin-bottom: 0.9rem;
+        }
+
+        .hero-title {
+            max-width: 760px;
+            color: #ffffff;
+            font-size: clamp(2.45rem, 5.5vw, 4.8rem);
+            line-height: 0.96;
+            font-weight: 900;
+            letter-spacing: -0.08rem;
+            margin-bottom: 1rem;
+        }
+
+        .hero-copy {
+            max-width: 690px;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: 1.04rem;
+            line-height: 1.7;
+            margin-bottom: 1.25rem;
+        }
+
+        .hero-badges {
+            display: flex;
+            flex-wrap: wrap;
             gap: 0.75rem;
         }
-        
-        .header-container h1 {
-            color: #ff1e2d !important;
-            font-size: clamp(2.35rem, 6vw, 4.4rem) !important;
-            font-weight: 900 !important;
-            letter-spacing: -1.5px;
-            line-height: 1;
-            margin-bottom: 0 !important;
-        }
-        
-        .hero-text {
-            color: #a8a8b8;
-            font-size: clamp(1rem, 1.6vw, 1.1rem);
-            font-weight: 300;
-            letter-spacing: 0.3px;
-            text-align: center;
-            line-height: 1.7;
-            margin: 0 auto !important;
-            max-width: 680px;
+
+        .hero-badges span {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.48rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #f8f8f8;
+            font-size: 0.86rem;
+            font-weight: 600;
         }
 
         .search-helper {
-            color: #a8a8b8;
-            text-align: center;
-            font-size: 0.98rem;
-            margin: 0 0 1rem 0;
+            color: rgba(255, 255, 255, 0.72);
+            text-align: left;
+            font-size: 1rem;
+            margin: 0 0 0.9rem 0;
         }
 
         div[data-testid="stForm"] {
-            background: rgba(255, 255, 255, 0.035);
-            border: 1px solid rgba(233, 9, 20, 0.18);
-            border-radius: 24px;
-            padding: 1.15rem 1rem 0.35rem;
+            background: linear-gradient(180deg, rgba(17, 17, 17, 0.88) 0%, rgba(12, 12, 12, 0.94) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 26px;
+            padding: 1.15rem 1rem 0.4rem;
             backdrop-filter: blur(16px);
-            margin-bottom: 2.5rem;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+            margin-bottom: 2.1rem;
         }
 
         div[data-testid="stFormSubmitButton"] {
-            max-width: 240px;
+            max-width: 280px;
             margin: 0.35rem auto 0.2rem;
         }
-        
-        /* Tabs modern */
+
         .stTabs [data-baseweb="tab-list"] {
-            border: 1px solid rgba(233, 9, 20, 0.12) !important;
-            gap: 0.5rem !important;
-            justify-content: center;
-            width: fit-content;
-            margin: 0 auto 2rem auto;
-            background: rgba(255, 255, 255, 0.03);
-            padding: 0.35rem !important;
-            border-radius: 999px;
-        }
-        
-        .stTabs [data-baseweb="tab-list"] button {
-            color: #a0a0b0 !important;
-            border-bottom: 3px solid transparent !important;
-            font-weight: 700 !important;
-            font-size: 1rem !important;
-            padding: 0.8rem 1.25rem !important;
-            transition: all 0.3s ease !important;
-            border-radius: 999px !important;
-        }
-        
-        .stTabs [data-baseweb="tab-list"] button:hover {
-            color: #ff1e2d !important;
-        }
-        
-        .stTabs [aria-selected="true"] {
-            color: #ff1e2d !important;
-            border-bottom: 3px solid transparent !important;
-            background: rgba(255, 30, 45, 0.12) !important;
-            box-shadow: 0 10px 26px rgba(255, 30, 45, 0.14) !important;
-        }
-        
-        /* Search bar enhanced */
-        .search-container {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2.5rem;
-            align-items: flex-end;
-            justify-content: center;
-        }
-        
-        .stTextInput input {
-            background-color: rgba(255, 255, 255, 0.08) !important;
-            border: 1.5px solid rgba(233, 9, 20, 0.25) !important;
-            border-radius: 12px !important;
-            color: #e0e0e0 !important;
-            font-size: 1rem !important;
-            min-height: 3.35rem !important;
-            padding: 0.95rem 1.2rem !important;
-            transition: all 0.3s ease !important;
-        }
-        
-        .stTextInput input:focus {
-            background-color: rgba(255, 255, 255, 0.12) !important;
-            border-color: #ff1e2d !important;
-            box-shadow: 0 0 20px rgba(255, 30, 45, 0.2) !important;
-        }
-        
-        .stTextInput input::placeholder {
-            color: #808090 !important;
-        }
-        
-        /* Button primary (search) */
-        .btn-search {
-            background: linear-gradient(135deg, #ff1e2d 0%, #e50914 100%) !important;
-            color: white !important;
-            border-radius: 12px !important;
-            padding: 0.95rem 2rem !important;
-            font-weight: 700 !important;
             border: none !important;
-            box-shadow: 0 8px 24px rgba(255, 30, 45, 0.3) !important;
-            transition: all 0.3s ease !important;
-            cursor: pointer !important;
+            gap: 0.6rem !important;
+            justify-content: flex-start;
+            width: 100%;
+            margin: 0 0 1.4rem 0;
+            background: transparent;
+            padding: 0 !important;
         }
-        
-        .btn-search:hover {
-            transform: translateY(-2px) !important;
-            box-shadow: 0 12px 32px rgba(255, 30, 45, 0.4) !important;
+
+        .stTabs [data-baseweb="tab-list"] button {
+            min-height: 3rem;
+            color: rgba(255, 255, 255, 0.72) !important;
+            background: rgba(255, 255, 255, 0.04) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 999px !important;
+            font-weight: 700 !important;
+            font-size: 0.96rem !important;
+            padding: 0.8rem 1.15rem !important;
+            transition: all 0.25s ease !important;
         }
-        
-        /* Card grid */
-        .movies-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 1.5rem;
-            margin: 2rem 0;
-            justify-content: center;
+
+        .stTabs [data-baseweb="tab-list"] button:hover {
+            color: #ffffff !important;
+            border-color: rgba(229, 9, 20, 0.4) !important;
+            background: rgba(229, 9, 20, 0.12) !important;
         }
-        
-        @media (max-width: 1024px) {
-            .movies-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+
+        .stTabs [aria-selected="true"] {
+            color: #ffffff !important;
+            background: linear-gradient(135deg, rgba(229, 9, 20, 0.96), rgba(176, 6, 16, 0.98)) !important;
+            box-shadow: 0 14px 28px rgba(229, 9, 20, 0.28) !important;
+            border-color: transparent !important;
         }
-        
-        @media (max-width: 768px) {
-            .movies-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+
+        .stTextInput input,
+        .stSelectbox [data-baseweb="select"] > div,
+        .stNumberInput input {
+            background-color: rgba(255, 255, 255, 0.06) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 14px !important;
+            color: #f3f3f3 !important;
+            font-size: 1rem !important;
+            min-height: 3.25rem !important;
+            padding: 0.9rem 1rem !important;
+            transition: all 0.25s ease !important;
         }
-        
-        @media (max-width: 480px) {
-            .movies-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+
+        .stTextInput input:focus,
+        .stSelectbox [data-baseweb="select"] > div:focus-within,
+        .stNumberInput input:focus {
+            border-color: rgba(229, 9, 20, 0.7) !important;
+            box-shadow: 0 0 0 1px rgba(229, 9, 20, 0.16), 0 0 26px rgba(229, 9, 20, 0.18) !important;
+            background-color: rgba(255, 255, 255, 0.08) !important;
         }
-        
-        /* Movie card */
+
+        .stTextInput input::placeholder {
+            color: #8f8f8f !important;
+        }
+
         .movie-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(233, 9, 20, 0.15);
-            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(20, 20, 20, 0.95) 0%, rgba(10, 10, 10, 0.98) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
             overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            cursor: pointer;
+            transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
             display: flex;
             flex-direction: column;
             height: 100%;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
         }
-        
+
         .movie-card:hover {
-            border-color: rgba(255, 30, 45, 0.4);
-            box-shadow: 0 12px 48px rgba(255, 30, 45, 0.15);
-            transform: translateY(-6px);
-            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(229, 9, 20, 0.42);
+            box-shadow: 0 24px 54px rgba(0, 0, 0, 0.36);
+            transform: translateY(-7px) scale(1.01);
         }
-        
+
         .movie-card-poster {
             width: 100%;
-            aspect-ratio: 2/3;
+            aspect-ratio: 2 / 3;
             overflow: hidden;
-            background: rgba(0, 0, 0, 0.4);
+            background: #141414;
         }
-        
+
         .movie-card-poster img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.4s ease;
+            transition: transform 0.3s ease;
         }
-        
+
         .movie-card:hover .movie-card-poster img {
-            transform: scale(1.05);
+            transform: scale(1.06);
         }
-        
+
         .movie-card-content {
             padding: 1rem;
             flex-grow: 1;
             display: flex;
             flex-direction: column;
         }
-        
+
         .movie-card-title {
-            color: #f0f0f0;
-            font-weight: 700;
-            font-size: 0.95rem;
-            line-height: 1.3;
-            margin-bottom: 0.5rem;
+            color: #f7f7f7;
+            font-weight: 800;
+            font-size: 1rem;
+            line-height: 1.28;
+            margin-bottom: 0.45rem;
             overflow: hidden;
             text-overflow: ellipsis;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
         }
-        
+
         .movie-card-meta {
-            color: #909098;
-            font-size: 0.8rem;
-            margin-bottom: 0.75rem;
+            color: rgba(255, 255, 255, 0.64);
+            font-size: 0.82rem;
+            margin-bottom: 0.85rem;
             line-height: 1.4;
         }
-        
-        .movie-card-actions {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: auto;
-        }
-        
-        .movie-card-actions button {
-            flex: 1;
-            padding: 0.6rem !important;
-            font-size: 0.8rem !important;
-            border-radius: 8px !important;
-            font-weight: 600 !important;
-            transition: all 0.3s ease !important;
-            border: none !important;
-        }
-        
-        .btn-details {
-            background-color: #ff1e2d !important;
-            color: white !important;
-        }
-        
-        .btn-details:hover {
-            background-color: #ff5559 !important;
-            transform: translateY(-2px) !important;
-        }
-        
-        .btn-fav {
-            background-color: rgba(233, 9, 20, 0.3) !important;
-            color: #ff1e2d !important;
-            border: 1px solid rgba(255, 30, 45, 0.3) !important;
-        }
-        
-        .btn-fav:hover {
-            background-color: rgba(233, 9, 20, 0.5) !important;
-            border-color: #ff1e2d !important;
-        }
-        
-        .btn-watch {
-            background-color: #f6c744 !important;
-            color: #111 !important;
-            font-weight: 700 !important;
-            flex: 1.2;
-            border: none !important;
-        }
-        
-        .btn-watch:hover {
-            background-color: #ffd93d !important;
-        }
-        
-        /* Sections */
+
         .section-title {
-            color: #ff1e2d;
-            font-size: 1.6rem;
-            font-weight: 800;
-            margin: 2.5rem 0 0.5rem 0;
-            letter-spacing: -0.5px;
-            text-align: center;
+            color: #ffffff;
+            font-size: 1.85rem;
+            font-weight: 900;
+            margin: 2.4rem 0 0.45rem 0;
+            letter-spacing: -0.04rem;
+            text-align: left;
         }
-        
+
         .section-desc {
-            color: #a0a0b0;
-            font-size: 0.95rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
+            color: rgba(255, 255, 255, 0.66);
+            font-size: 0.98rem;
+            margin-bottom: 1.3rem;
+            text-align: left;
         }
-        
-        /* Standard buttons */
-        .stButton>button, div[data-testid="stFormSubmitButton"] > button {
-            background-color: #ff1e2d !important;
-            color: white !important;
-            border-radius: 10px !important;
-            padding: 0.8rem 1.2rem !important;
-            font-weight: 700 !important;
-            box-shadow: 0 8px 20px rgba(255, 30, 45, 0.3) !important;
-            transition: all 0.3s ease !important;
-            border: none !important;
-            min-height: 3.1rem !important;
-        }
-        
-        .stButton>button:hover, div[data-testid="stFormSubmitButton"] > button:hover {
-            background-color: #ff5559 !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 12px 28px rgba(255, 30, 45, 0.4) !important;
-        }
-        
-        /* Selects */
-        .stSelectbox, .stRadio {
-            color: #e0e0e0 !important;
-        }
-        
-        .stSelectbox, .stNumberInput {
-            background-color: rgba(255, 255, 255, 0.05) !important;
-            border: 1px solid rgba(233, 9, 20, 0.2) !important;
-            border-radius: 10px !important;
-        }
-        
-        /* Other elements */
-        .stAlert {
+
+        .stButton > button,
+        div[data-testid="stFormSubmitButton"] > button {
+            background: linear-gradient(135deg, #e50914 0%, #b00610 100%) !important;
+            color: #ffffff !important;
             border-radius: 12px !important;
-            border-left: 4px solid #ff1e2d !important;
-            background: rgba(255, 30, 45, 0.1) !important;
+            padding: 0.82rem 1.12rem !important;
+            font-weight: 800 !important;
+            letter-spacing: 0.01rem;
+            box-shadow: 0 14px 30px rgba(229, 9, 20, 0.22) !important;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease !important;
+            border: none !important;
+            min-height: 3rem !important;
         }
-        
+
+        .stButton > button:hover,
+        div[data-testid="stFormSubmitButton"] > button:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 18px 34px rgba(229, 9, 20, 0.3) !important;
+            filter: brightness(1.06);
+        }
+
+        .stAlert {
+            border-radius: 16px !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: #f5f5f5 !important;
+        }
+
         .stDivider {
-            background-color: rgba(233, 9, 20, 0.15) !important;
+            background-color: rgba(255, 255, 255, 0.08) !important;
         }
-        
-        .stImage {
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+
+        .stImage img {
+            border-radius: 14px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
         }
-        
+
         .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
-            letter-spacing: -0.5px;
+            letter-spacing: -0.03rem;
+        }
+
+        .stExpander {
+            border-radius: 18px !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            background: rgba(255, 255, 255, 0.03) !important;
         }
 
         div[data-testid="stHorizontalBlock"] {
             align-items: stretch;
         }
 
+        @media (max-width: 900px) {
+            .netflix-nav {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .auth-chip {
+                width: 100%;
+                text-align: left;
+            }
+
+            .hero-banner {
+                padding: 1.7rem;
+            }
+        }
+
         @media (max-width: 768px) {
             .block-container {
-                padding: 1rem 0.85rem 2rem !important;
-            }
-
-            .header-container {
-                margin-bottom: 1.75rem;
-                padding-bottom: 1.15rem;
-            }
-
-            .hero-text {
-                max-width: 100%;
-                line-height: 1.55;
-            }
-
-            .search-helper {
-                font-size: 0.92rem;
+                padding: 0.85rem 0.8rem 2rem !important;
             }
 
             div[data-testid="stForm"] {
-                border-radius: 20px;
-                padding: 0.9rem 0.85rem 0.2rem;
+                border-radius: 22px;
+                padding: 0.95rem 0.85rem 0.25rem;
             }
 
             div[data-testid="stFormSubmitButton"] {
@@ -422,22 +455,12 @@ def inject_app_styles() -> None:
             }
 
             .stTabs [data-baseweb="tab-list"] {
-                width: 100%;
-                gap: 0.35rem !important;
-                padding: 0.35rem !important;
-                border-radius: 20px;
+                gap: 0.45rem !important;
+                flex-wrap: wrap;
             }
 
             .stTabs [data-baseweb="tab-list"] button {
-                flex: 1 1 0;
-                justify-content: center;
-                padding: 0.8rem 0.75rem !important;
-                font-size: 0.95rem !important;
-            }
-
-            .section-title {
-                font-size: 1.4rem;
-                margin-top: 2rem;
+                flex: 1 1 auto;
             }
 
             div[data-testid="stHorizontalBlock"] {
@@ -451,20 +474,6 @@ def inject_app_styles() -> None:
             }
         }
 
-        @media (max-width: 480px) {
-            .header-container h1 {
-                font-size: 2rem !important;
-            }
-
-            .stTextInput input {
-                font-size: 0.96rem !important;
-            }
-
-            .stTabs [data-baseweb="tab-list"] button {
-                font-size: 0.9rem !important;
-            }
-        }
-        
         div[data-testid="stStatusWidget"],
         #MainMenu, header, footer, button[title="Open the menu"], button[title="Open details"] {
             visibility: hidden !important;
@@ -507,6 +516,78 @@ def get_api_keys() -> list[str]:
     return list(dict.fromkeys(api_keys))
 
 
+def _looks_like_vtt_url(url: str) -> bool:
+    normalized_url = url.strip().lower().split("?", 1)[0].split("#", 1)[0]
+    return normalized_url.endswith(".vtt")
+
+
+def open_movie_page(imdb_id: str, page: str) -> None:
+    if not imdb_id:
+        st.warning("Aucun identifiant IMDb disponible pour ce contenu.")
+        return
+
+    st.session_state["selected_imdb_id"] = imdb_id
+    st.session_state["current_page"] = page
+    st.rerun()
+
+
+def render_navbar(authenticated_user: Any | None) -> None:
+    if authenticated_user:
+        chip_class = "auth-chip auth-chip--connected"
+        chip_label = "Connexion"
+        chip_value = escape(authenticated_user.user_id)
+    elif auth_is_required():
+        chip_class = "auth-chip auth-chip--required"
+        chip_label = "Connexion"
+        chip_value = "Se connecter via proxy"
+    else:
+        chip_class = "auth-chip auth-chip--guest"
+        chip_label = "Connexion"
+        chip_value = "Non connecte"
+
+    st.markdown(
+        f"""
+        <div class="netflix-nav">
+            <div class="netflix-nav-left">
+                <div class="brand-wordmark">MOVIE EXPLORER</div>
+                <div class="nav-mini">
+                    <span>Accueil</span>
+                    <span>Ma Liste</span>
+                    <span>Lecture VTT</span>
+                </div>
+            </div>
+            <div class="{chip_class}">
+                <span>{chip_label}</span>
+                <strong>{chip_value}</strong>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_home_hero() -> None:
+    st.markdown(
+        """
+        <section class="hero-banner">
+            <div class="hero-kicker">Streamline Your Movie Night</div>
+            <h1 class="hero-title">Un look streaming, un lecteur intégré, une seule liste de favoris.</h1>
+            <p class="hero-copy">
+                Recherche rapide, lecture dans l'application, sous-titres WebVTT et ambiance rouge/noir
+                inspirée des grandes plateformes de streaming.
+            </p>
+            <div class="hero-badges">
+                <span>Films</span>
+                <span>Séries</span>
+                <span>Sous-titres .vtt</span>
+                <span>Ma liste</span>
+            </div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def poster_url(movie: dict[str, Any]) -> str | None:
     poster = movie.get("Poster")
     if poster and poster != "N/A":
@@ -526,9 +607,9 @@ def fetch_trending_titles(client: OmdbClient, titles: list[str], media_type: str
     return results
 
 
-def render_trending_section(client: OmdbClient, user_id: str | None = None) -> None:
-    st.markdown('<h3 class="section-title">🔥 Tendances</h3>', unsafe_allow_html=True)
-    st.markdown('<p class="section-desc">Découvrez les films et séries les plus populaires du moment.</p>', unsafe_allow_html=True)
+def render_trending_section(client: OmdbClient) -> None:
+    st.markdown('<h3 class="section-title">En ce moment</h3>', unsafe_allow_html=True)
+    st.markdown('<p class="section-desc">Quelques titres forts pour remplir rapidement l\'écran d\'accueil.</p>', unsafe_allow_html=True)
 
     trending_movies = [
         "Avatar",
@@ -548,17 +629,16 @@ def render_trending_section(client: OmdbClient, user_id: str | None = None) -> N
     tabs = st.tabs(["🎬 Films tendance", "📺 Séries tendance"])
     with tabs[0]:
         movies = fetch_trending_titles(client, trending_movies, "movie")
-        render_movies_grid(movies, client, context="trending_movie", user_id=user_id)
+        render_movies_grid(movies, client, context="trending_movie")
     with tabs[1]:
         series = fetch_trending_titles(client, trending_series, "series")
-        render_movies_grid(series, client, context="trending_serie", user_id=user_id)
+        render_movies_grid(series, client, context="trending_serie")
 
 
 def render_movie_card(
     movie: dict[str, Any],
     client: OmdbClient,
     context: str = "",
-    user_id: str | None = None,
 ) -> None:
     with st.container(border=True):
         col_img, col_info = st.columns([1, 3])
@@ -583,34 +663,28 @@ def render_movie_card(
             key_suffix = f"_{context}" if context else ""
             fav_key = f"fav_{imdb_id}{key_suffix}"
             details_key = f"details_{imdb_id}{key_suffix}"
-            playimdb_url = f"https://www.playimdb.com/pt/title/{imdb_id}/" if imdb_id else ""
+            watch_key = f"watch_{imdb_id}{key_suffix}"
 
             button_col_1, button_col_2, button_col_3 = st.columns([1, 1, 1])
             with button_col_1:
                 if st.button("📋 Détails", key=details_key, use_container_width=True):
-                    st.session_state["selected_imdb_id"] = imdb_id
-                    st.session_state["current_page"] = "details"
-                    st.rerun()
+                    open_movie_page(imdb_id, "details")
             with button_col_2:
-                if imdb_id:
-                    st.markdown(
-                        f'<a href="{playimdb_url}" target="_blank" style="display:inline-block;width:100%;padding:0.5rem 0.5rem;background-color:#f6c744;color:#111;text-decoration:none;border-radius:0.35rem;text-align:center;">🎬 Regarder</a>',
-                        unsafe_allow_html=True,
-                    )
+                if st.button("▶ Regarder", key=watch_key, use_container_width=True):
+                    open_movie_page(imdb_id, "watch")
             with button_col_3:
                 if st.button("⭐ Favoris", key=fav_key, use_container_width=True):
-                    added = add_favorite(movie, user_id=user_id)
+                    added = add_favorite(movie)
                     if added:
                         st.success("Ajouté aux favoris.")
                     else:
-                        st.warning("Déjà dans les favoris ou données incomplètes.")
+                        st.warning("Déjà dans la liste ou données incomplètes.")
 
 
 def render_movies_grid(
     movies: list[dict[str, Any]],
     client: OmdbClient,
     context: str = "",
-    user_id: str | None = None,
 ) -> None:
     """Affiche les films en grid responsive."""
     if not movies:
@@ -625,14 +699,13 @@ def render_movies_grid(
             if movie_idx < len(movies):
                 movie = movies[movie_idx]
                 with col:
-                    render_movie_grid_card(movie, client, context=f"{context}_{movie_idx}", user_id=user_id)
+                    render_movie_grid_card(movie, client, context=f"{context}_{movie_idx}")
 
 
 def render_movie_grid_card(
     movie: dict[str, Any],
     client: OmdbClient,
     context: str = "",
-    user_id: str | None = None,
 ) -> None:
     """Carte film compacte pour grid."""
     title = movie.get("Title", "Titre inconnu")
@@ -644,7 +717,6 @@ def render_movie_grid_card(
     key_suffix = f"_{context}" if context else ""
     fav_key = f"fav_{imdb_id}{key_suffix}"
     details_key = f"details_{imdb_id}{key_suffix}"
-    playimdb_url = f"https://www.playimdb.com/pt/title/{imdb_id}/" if imdb_id else ""
     
     # Conteneur de la carte
     card_html = f"""
@@ -667,29 +739,116 @@ def render_movie_grid_card(
     
     with action_col1:
         if st.button("📋", key=f"details_small_{details_key}", help="Détails", use_container_width=True):
-            st.session_state["selected_imdb_id"] = imdb_id
-            st.session_state["current_page"] = "details"
-            st.rerun()
+            open_movie_page(imdb_id, "details")
     
     with action_col2:
-        if imdb_id:
-            st.markdown(
-                f'<a href="{playimdb_url}" target="_blank" style="display:block;padding:0.55rem;background-color:#f6c744;color:#111;text-decoration:none;border-radius:8px;text-align:center;font-weight:600;font-size:0.8rem;">🎬 Regarder</a>',
-                unsafe_allow_html=True,
-            )
+        if st.button("▶", key=f"watch_small_{imdb_id}{key_suffix}", help="Regarder", use_container_width=True):
+            open_movie_page(imdb_id, "watch")
     
     with action_col3:
         if st.button("⭐", key=f"fav_small_{fav_key}", help="Favoris", use_container_width=True):
-            added = add_favorite(movie, user_id=user_id)
+            added = add_favorite(movie)
             if added:
-                st.toast("✅ Ajouté aux favoris!")
+                st.toast("✅ Ajouté à Ma liste")
             else:
-                st.toast("⚠️ Déjà dans les favoris.")
+                st.toast("⚠️ Déjà dans Ma liste.")
     
     st.markdown("</div></div>", unsafe_allow_html=True)
 
 
-def render_details(details: dict[str, Any], client: OmdbClient) -> None:
+def render_player_section(details: dict[str, Any]) -> None:
+    imdb_id = details.get("imdbID", "").strip()
+    source = get_player_source(imdb_id) or {}
+    current_video_url = source.get("video_url", "")
+    current_subtitle_url = source.get("subtitle_url", "")
+    current_subtitle_lang = source.get("subtitle_lang", "fr")
+    current_subtitle_label = source.get("subtitle_label", "Français")
+
+    st.subheader("▶ Lecteur vidéo")
+    st.caption("Ajoute une URL vidéo directe lisible par le navigateur, puis un sous-titre WebVTT `.vtt` si nécessaire.")
+
+    with st.expander("Configurer la vidéo et les sous-titres", expanded=not current_video_url):
+        with st.form(f"player_source_form_{imdb_id}", clear_on_submit=False):
+            video_url = st.text_input(
+                "URL vidéo",
+                value=current_video_url,
+                placeholder="https://.../movie.mp4",
+            )
+            subtitle_url = st.text_input(
+                "URL du sous-titre `.vtt`",
+                value=current_subtitle_url,
+                placeholder="https://.../subtitle-fr.vtt",
+            )
+            subtitle_col_1, subtitle_col_2 = st.columns(2)
+            with subtitle_col_1:
+                subtitle_lang = st.text_input("Code langue", value=current_subtitle_lang, placeholder="fr")
+            with subtitle_col_2:
+                subtitle_label = st.text_input("Libellé", value=current_subtitle_label, placeholder="Français")
+
+            action_col_1, action_col_2 = st.columns(2)
+            with action_col_1:
+                save_clicked = st.form_submit_button(
+                    "Enregistrer",
+                    type="primary",
+                    use_container_width=True,
+                )
+            with action_col_2:
+                clear_clicked = st.form_submit_button(
+                    "Supprimer la source",
+                    use_container_width=True,
+                )
+
+        if save_clicked:
+            if not video_url.strip():
+                st.error("L'URL vidéo est obligatoire pour ouvrir le lecteur.")
+            elif subtitle_url.strip() and not _looks_like_vtt_url(subtitle_url):
+                st.error("Le sous-titre doit pointer vers un fichier `.vtt`.")
+            else:
+                save_player_source(
+                    imdb_id=imdb_id,
+                    video_url=video_url,
+                    subtitle_url=subtitle_url,
+                    subtitle_lang=subtitle_lang,
+                    subtitle_label=subtitle_label,
+                )
+                st.success("Source vidéo enregistrée.")
+                st.rerun()
+
+        if clear_clicked:
+            clear_player_source(imdb_id)
+            st.success("Source supprimée.")
+            st.rerun()
+
+    if not current_video_url:
+        st.warning("Aucune source vidéo n'est configurée pour ce titre.")
+        st.info("Utilise une URL directe de type MP4/WebM accessible depuis le navigateur. Les sous-titres doivent être au format `.vtt`.")
+        return
+
+    subtitle_track = ""
+    if current_subtitle_url:
+        subtitle_track = (
+            f'<track kind="subtitles" src="{escape(current_subtitle_url)}" '
+            f'srclang="{escape(current_subtitle_lang)}" label="{escape(current_subtitle_label)}" default>'
+        )
+
+    poster = poster_url(details) or ""
+    video_markup = f"""
+    <div style="background:rgba(255,255,255,0.03);padding:1rem;border-radius:18px;border:1px solid rgba(233,9,20,0.18);">
+      <video controls playsinline preload="metadata" crossorigin="anonymous" poster="{escape(poster)}"
+        style="width:100%;border-radius:12px;background:#000;max-height:70vh;">
+        <source src="{escape(current_video_url)}">
+        {subtitle_track}
+        Votre navigateur ne supporte pas la lecture vidéo HTML5.
+      </video>
+    </div>
+    """
+    components.html(video_markup, height=620, scrolling=False)
+
+    if current_subtitle_url:
+        st.caption("Si le sous-titre ne s'affiche pas, vérifie que le fichier `.vtt` et la vidéo autorisent le chargement cross-origin.")
+
+
+def render_details(details: dict[str, Any], client: OmdbClient, show_watch_button: bool = True) -> None:
     st.divider()
     
     col_img, col_data = st.columns([1, 2])
@@ -722,14 +881,10 @@ def render_details(details: dict[str, Any], client: OmdbClient) -> None:
     st.subheader("📖 Résumé")
     st.write(details.get("Plot", "Aucun résumé disponible."))
 
-    # Lien direct pour regarder
     imdb_id = details.get("imdbID", "")
-    if imdb_id:
-        playimdb_url = f"https://www.playimdb.com/pt/title/{imdb_id}/"
-        st.markdown(
-            f'<a href="{playimdb_url}" target="_blank" style="display:inline-block;padding:0.7rem 1.5rem;background-color:#e50914;color:#fff;text-decoration:none;border-radius:0.5rem;font-weight:bold;font-size:1rem;">🎬 Regarder maintenant</a>',
-            unsafe_allow_html=True,
-        )
+    if show_watch_button and imdb_id:
+        if st.button("▶ Ouvrir le lecteur", key=f"open_watch_{imdb_id}", use_container_width=False):
+            open_movie_page(imdb_id, "watch")
 
     ratings = details.get("Ratings", [])
     if ratings:
@@ -804,16 +959,16 @@ def fetch_season_data(client: OmdbClient, imdb_id: str, season: int) -> dict[str
         return None
 
 
-def render_favorites(client: OmdbClient, user_id: str | None = None) -> None:
-    st.markdown('<h3 class="section-title">⭐ Mes favoris</h3>', unsafe_allow_html=True)
-    st.markdown('<p class="section-desc">Retrouvez ici votre sélection enregistrée.</p>', unsafe_allow_html=True)
-    favorites = load_favorites(user_id=user_id)
+def render_favorites(client: OmdbClient) -> None:
+    st.markdown('<h3 class="section-title">Ma liste</h3>', unsafe_allow_html=True)
+    st.markdown('<p class="section-desc">Une seule liste de favoris, affichée pareil en invité ou connecté.</p>', unsafe_allow_html=True)
+    favorites = load_favorites()
     if not favorites:
         st.info("Aucun favori pour le moment.")
         return
 
     for movie in favorites:
-        col_1, col_2, col_3, col_4 = st.columns([1, 3, 1, 1])
+        col_1, col_2, col_3, col_4, col_5 = st.columns([1, 3, 1, 1, 1])
         with col_1:
             poster = poster_url(movie)
             if poster:
@@ -825,12 +980,13 @@ def render_favorites(client: OmdbClient, user_id: str | None = None) -> None:
             st.caption(f"{movie.get('Year', 'N/A')} | {movie.get('Type', 'N/A')}")
         with col_3:
             if st.button("📋 Détails", key=f"fav_details_{imdb_id}"):
-                st.session_state["selected_imdb_id"] = imdb_id
-                st.session_state["current_page"] = "details"
-                st.rerun()
+                open_movie_page(imdb_id, "details")
         with col_4:
+            if st.button("▶ Regarder", key=f"watch_{imdb_id}"):
+                open_movie_page(imdb_id, "watch")
+        with col_5:
             if st.button("❌ Supprimer", key=f"remove_{imdb_id}"):
-                remove_favorite(imdb_id, user_id=user_id)
+                remove_favorite(imdb_id)
                 st.rerun()
         st.divider()
 
@@ -867,6 +1023,7 @@ def main() -> None:
         st.stop()
 
     client = OmdbClient(api_keys=tuple(api_keys))
+    render_navbar(authenticated_user)
 
     # PAGE: DETAILS
     if st.session_state["current_page"] == "details" and st.session_state["selected_imdb_id"]:
@@ -882,22 +1039,35 @@ def main() -> None:
             st.error(str(exc))
         return
 
-    # PAGE: SEARCH & FAVORITES
-    st.markdown(
-        """
-        <div class="header-container">
-            <h1>🎬 Movie Explorer</h1>
-            <p class="hero-text">Découvrez films, séries et animations du monde entier.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    # PAGE: WATCH
+    if st.session_state["current_page"] == "watch" and st.session_state["selected_imdb_id"]:
+        nav_col_1, nav_col_2 = st.columns(2)
+        with nav_col_1:
+            if st.button("← Retour aux détails", key="btn_back_to_details", use_container_width=True):
+                st.session_state["current_page"] = "details"
+                st.rerun()
+        with nav_col_2:
+            if st.button("⌂ Retour à la recherche", key="btn_back_to_search_from_watch", use_container_width=True):
+                st.session_state["current_page"] = "search"
+                st.session_state["selected_imdb_id"] = None
+                st.rerun()
 
-    tab_search, tab_favorites = st.tabs(["🔍 Recherche", "⭐ Favoris"])
+        try:
+            details = client.get_details(st.session_state["selected_imdb_id"])
+            render_player_section(details)
+            render_details(details, client, show_watch_button=False)
+        except OmdbError as exc:
+            st.error(str(exc))
+        return
+
+    # PAGE: SEARCH & FAVORITES
+    render_home_hero()
+
+    tab_search, tab_favorites = st.tabs(["Accueil", "Ma liste"])
 
     with tab_search:
         st.markdown(
-            '<p class="search-helper">Recherchez un titre et retrouvez rapidement où le consulter.</p>',
+            '<p class="search-helper">Cherche un titre, ouvre ses détails, puis lance la lecture intégrée avec sous-titres.</p>',
             unsafe_allow_html=True,
         )
 
@@ -935,7 +1105,7 @@ def main() -> None:
                 st.success(f"✅ {total_results} résultat(s) trouvé(s). Page {page}/{total_pages}.")
                 
                 if movies:
-                    render_movies_grid(movies, client, context=f"search_page{page}", user_id=current_user_id)
+                    render_movies_grid(movies, client, context=f"search_page{page}")
 
                     if total_pages > 1:
                         st.divider()
@@ -958,10 +1128,10 @@ def main() -> None:
         
         # Sinon, afficher les tendances
         else:
-            render_trending_section(client, user_id=current_user_id)
+            render_trending_section(client)
 
     with tab_favorites:
-        render_favorites(client, user_id=current_user_id)
+        render_favorites(client)
 
 
 if __name__ == "__main__":

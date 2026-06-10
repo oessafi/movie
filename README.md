@@ -9,7 +9,8 @@ Projet Python simple pour rechercher des films, séries ou jeux avec l'API OMDb.
 - Affichage des posters
 - Détails complets : année, genre, durée, acteurs, résumé, notes
 - Favoris sauvegardés localement dans `favorites.json`
-- Favoris séparés par compte si une authentification proxy est activée
+- Lecteur vidéo intégré avec sous-titres `.vtt` configurables par film dans `player_sources.json`
+- Statut de connexion affiché dans la navbar
 - Mode SSO sans interface personnalisée dans l'app via headers compatibles Keycloak
 - Prêt pour déploiement Streamlit Cloud, Render ou Docker
 
@@ -67,7 +68,7 @@ Le principe est le suivant :
 
 1. Keycloak gère la connexion en dehors de l'app.
 2. Un proxy (par exemple `oauth2-proxy`, Nginx, Traefik, Caddy) transmet un header de confiance.
-3. Streamlit lit ce header et sépare les favoris par utilisateur.
+3. Streamlit lit ce header et affiche l'état de connexion dans la navbar.
 
 Exemple de configuration locale :
 
@@ -96,6 +97,19 @@ Puis ouvre l'adresse affichée dans le terminal, souvent :
 ```text
 http://localhost:8501
 ```
+
+## Lecture avec sous-titres
+
+1. Ouvre un film puis clique sur `Regarder`.
+2. Dans `Configurer la vidéo et les sous-titres`, colle une URL vidéo directe comme `https://.../movie.mp4`.
+3. Ajoute si besoin une URL de sous-titre WebVTT comme `https://.../subtitle-fr.vtt`.
+4. Enregistre, puis lance la lecture dans le lecteur intégré.
+
+Remarques :
+
+- Le lecteur HTML5 fonctionne surtout avec des URLs directes lisibles par le navigateur, par exemple MP4 ou WebM.
+- Les sous-titres doivent être au format `.vtt`.
+- La vidéo et le fichier `.vtt` doivent être accessibles depuis le navigateur et autoriser le chargement cross-origin si elles viennent d'un autre domaine.
 
 ## Déploiement sur Streamlit Cloud
 
