@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from auth import auth_is_required, get_authenticated_user
 from favorites import add_favorite, load_favorites, remove_favorite
 from omdb_client import OmdbClient, OmdbError
-from player_sources import clear_player_source, get_player_source, save_player_source
+from player_sources import get_player_source
 
 load_dotenv()
 
@@ -651,11 +651,6 @@ def get_api_keys() -> list[str]:
     return list(dict.fromkeys(api_keys))
 
 
-def _looks_like_vtt_url(url: str) -> bool:
-    normalized_url = url.strip().lower().split("?", 1)[0].split("#", 1)[0]
-    return normalized_url.endswith(".vtt")
-
-
 def _set_navigation_query_params(page: str = "", imdb_id: str = "", autoplay: bool = False) -> None:
     params: dict[str, str] = {}
     if page and imdb_id:
@@ -699,6 +694,10 @@ def build_watch_href(imdb_id: str) -> str:
     if not imdb_id:
         return "#"
     return f"?{urlencode({'page': 'watch', 'imdb': imdb_id, 'autoplay': '1'})}"
+
+
+def build_imdb_title_url(imdb_id: str) -> str:
+    return f"https://www.imdb.com/title/{imdb_id}/" if imdb_id else "https://www.imdb.com/"
 
 
 def open_movie_page(imdb_id: str, page: str, autoplay: bool | None = None) -> None:
@@ -1038,63 +1037,10 @@ def render_player_section(details: dict[str, Any], autoplay: bool = False) -> No
     current_subtitle_label = source.get("subtitle_label", "Français")
 
     st.subheader("▶ Lecteur vidéo")
-    st.caption("Ajoute une URL vidéo directe lisible par le navigateur, puis un sous-titre WebVTT `.vtt` si nécessaire.")
-
-    with st.expander("Configurer la vidéo et les sous-titres", expanded=not current_video_url):
-        with st.form(f"player_source_form_{imdb_id}", clear_on_submit=False):
-            video_url = st.text_input(
-                "URL vidéo",
-                value=current_video_url,
-                placeholder="https://.../movie.mp4",
-            )
-            subtitle_url = st.text_input(
-                "URL du sous-titre `.vtt`",
-                value=current_subtitle_url,
-                placeholder="https://.../subtitle-fr.vtt",
-            )
-            subtitle_col_1, subtitle_col_2 = st.columns(2)
-            with subtitle_col_1:
-                subtitle_lang = st.text_input("Code langue", value=current_subtitle_lang, placeholder="fr")
-            with subtitle_col_2:
-                subtitle_label = st.text_input("Libellé", value=current_subtitle_label, placeholder="Français")
-
-            action_col_1, action_col_2 = st.columns(2)
-            with action_col_1:
-                save_clicked = st.form_submit_button(
-                    "Enregistrer",
-                    type="primary",
-                    use_container_width=True,
-                )
-            with action_col_2:
-                clear_clicked = st.form_submit_button(
-                    "Supprimer la source",
-                    use_container_width=True,
-                )
-
-        if save_clicked:
-            if not video_url.strip():
-                st.error("L'URL vidéo est obligatoire pour ouvrir le lecteur.")
-            elif subtitle_url.strip() and not _looks_like_vtt_url(subtitle_url):
-                st.error("Le sous-titre doit pointer vers un fichier `.vtt`.")
-            else:
-                save_player_source(
-                    imdb_id=imdb_id,
-                    video_url=video_url,
-                    subtitle_url=subtitle_url,
-                    subtitle_lang=subtitle_lang,
-                    subtitle_label=subtitle_label,
-                )
-                st.success("Source vidéo enregistrée.")
-                st.rerun()
-
-        if clear_clicked:
-            clear_player_source(imdb_id)
-            st.success("Source supprimée.")
-            st.rerun()
 
     if not current_video_url:
-        st.warning("Aucune source vidéo n'est configurée pour ce titre.")
-        st.info("Utilise une URL directe de type MP4/WebM accessible depuis le navigateur. Les sous-titres doivent être au format `.vtt`.")
+        st.info("Aucune lecture intégrée n'est disponible pour ce titre.")
+        st.link_button("Voir la fiche IMDb", build_imdb_title_url(imdb_id), use_container_width=True)
         return
 
     subtitle_track = ""
