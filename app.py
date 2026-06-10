@@ -330,6 +330,106 @@ def inject_app_styles() -> None:
             transform: scale(1.06);
         }
 
+        .movie-card-poster-fallback {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 1rem;
+            color: #ffffff;
+            overflow: hidden;
+            isolation: isolate;
+        }
+
+        .movie-card-poster-fallback::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(8, 8, 8, 0.04) 0%, rgba(8, 8, 8, 0.18) 28%, rgba(5, 5, 5, 0.88) 100%);
+            z-index: -1;
+        }
+
+        .movie-card-poster-fallback::after {
+            content: "";
+            position: absolute;
+            width: 210px;
+            height: 210px;
+            right: -48px;
+            top: -58px;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 72%);
+            z-index: -1;
+        }
+
+        .poster-topline {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 0.6rem;
+        }
+
+        .poster-kicker,
+        .poster-type {
+            display: inline-flex;
+            align-items: center;
+            min-height: 1.9rem;
+            padding: 0.18rem 0.62rem;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.12rem;
+            text-transform: uppercase;
+            backdrop-filter: blur(10px);
+        }
+
+        .poster-kicker {
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .poster-type {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .poster-bottomline {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .poster-title {
+            font-size: clamp(1.4rem, 2vw, 1.85rem);
+            font-weight: 900;
+            line-height: 0.98;
+            letter-spacing: -0.04rem;
+            text-wrap: balance;
+        }
+
+        .poster-meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        .poster-watermark {
+            position: absolute;
+            right: 0.9rem;
+            bottom: 0.55rem;
+            color: rgba(255, 255, 255, 0.11);
+            font-size: 3.6rem;
+            font-weight: 900;
+            letter-spacing: -0.12rem;
+            line-height: 1;
+            pointer-events: none;
+            user-select: none;
+        }
+
         .movie-card-content {
             padding: 1rem;
             flex-grow: 1;
@@ -675,6 +775,41 @@ def fallback_search_results(query: str, media_type: str) -> list[dict[str, Any]]
     return matches
 
 
+POSTER_FALLBACK_BACKGROUNDS = (
+    "linear-gradient(145deg, #28070d 0%, #a30e1e 46%, #09090c 100%)",
+    "linear-gradient(145deg, #120b2d 0%, #2956c7 44%, #05070c 100%)",
+    "linear-gradient(145deg, #201405 0%, #b96a09 48%, #090909 100%)",
+    "linear-gradient(145deg, #06201d 0%, #0f8d76 45%, #050708 100%)",
+    "linear-gradient(145deg, #2a0718 0%, #cf2c6d 42%, #0b0a0f 100%)",
+)
+
+
+def build_fallback_poster_markup(title: str, year: str, media_type: str, context: str = "") -> str:
+    theme_index = sum(ord(char) for char in title) % len(POSTER_FALLBACK_BACKGROUNDS)
+    background = POSTER_FALLBACK_BACKGROUNDS[theme_index]
+    media_label = {
+        "movie": "Film",
+        "series": "Serie",
+        "game": "Game",
+    }.get(media_type.lower(), media_type.capitalize() or "Titre")
+    kicker = "Tendance" if "trending" in context else "Selection"
+    watermark = escape(title[:1].upper() or "M")
+
+    return f"""
+    <div class="movie-card-poster-fallback" style="background: {background};">
+        <div class="poster-topline">
+            <span class="poster-kicker">{escape(kicker)}</span>
+            <span class="poster-type">{escape(media_label)}</span>
+        </div>
+        <div class="poster-bottomline">
+            <div class="poster-title">{escape(title)}</div>
+            <div class="poster-meta">{escape(year)}</div>
+        </div>
+        <div class="poster-watermark">{watermark}</div>
+    </div>
+    """
+
+
 def render_trending_section(client: OmdbClient) -> None:
     st.markdown('<h3 class="section-title">En ce moment</h3>', unsafe_allow_html=True)
     st.markdown('<p class="section-desc">Quelques titres forts pour remplir rapidement l\'écran d\'accueil.</p>', unsafe_allow_html=True)
@@ -773,7 +908,7 @@ def render_movie_grid_card(
     card_html = f"""
     <div class="movie-card">
         <div class="movie-card-poster">
-            {f'<img src="{poster}" alt="{title}">' if poster else '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#222;color:#888;">Pas d\'affiche</div>'}
+            {f'<img src="{poster}" alt="{escape(title)}">' if poster else build_fallback_poster_markup(title, year, media_type, context)}
         </div>
         <div class="movie-card-content">
             <div class="movie-card-title">{title}</div>
