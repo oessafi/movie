@@ -643,6 +643,38 @@ def fallback_trending_titles(media_type: str) -> list[dict[str, Any]]:
     return [dict(item) for item in FALLBACK_TRENDING_BY_TYPE.get(media_type, [])]
 
 
+def should_use_local_search_fallback(error_message: str) -> bool:
+    lowered_message = error_message.lower()
+    return any(
+        token in lowered_message
+        for token in (
+            "request limit reached",
+            "invalid api key",
+            "no api key provided",
+            "toutes les cles api omdb configurees",
+            "aucune cle api omdb valide",
+            "cle api omdb manquante",
+        )
+    )
+
+
+def fallback_search_results(query: str, media_type: str) -> list[dict[str, Any]]:
+    normalized_query = query.strip().lower()
+    if not normalized_query:
+        return []
+
+    media_types = ("movie", "series") if media_type == "all" else (media_type,)
+    matches: list[dict[str, Any]] = []
+
+    for current_media_type in media_types:
+        for item in FALLBACK_TRENDING_BY_TYPE.get(current_media_type, []):
+            title = str(item.get("Title", "")).strip().lower()
+            if normalized_query in title or title in normalized_query:
+                matches.append(dict(item))
+
+    return matches
+
+
 def render_trending_section(client: OmdbClient) -> None:
     st.markdown('<h3 class="section-title">En ce moment</h3>', unsafe_allow_html=True)
     st.markdown('<p class="section-desc">Quelques titres forts pour remplir rapidement l\'écran d\'accueil.</p>', unsafe_allow_html=True)
@@ -1143,7 +1175,20 @@ def main() -> None:
                     st.info("Aucun résultat trouvé. Essayez une autre recherche.")
 
             except OmdbError as exc:
-                st.error(f"Erreur de recherche: {str(exc)}")
+                error_message = str(exc)
+                if should_use_local_search_fallback(error_message):
+                    fallback_movies = fallback_search_results(query, media_type)
+                    st.warning(
+                        "OMDb est indisponible pour le moment. Affichage d'une recherche locale de secours."
+                    )
+                    st.caption(f"Détail OMDb: {error_message}")
+
+                    if fallback_movies:
+                        render_movies_grid(fallback_movies, client, context=f"local_search_{page}")
+                    else:
+                        st.info("Aucun titre local ne correspond à cette recherche.")
+                else:
+                    st.error(f"Erreur de recherche: {error_message}")
         
         # Sinon, afficher les tendances
         else:
