@@ -9,6 +9,8 @@ Projet Python simple pour rechercher des films, séries ou jeux avec l'API OMDb.
 - Affichage des posters
 - Détails complets : année, genre, durée, acteurs, résumé, notes
 - Favoris sauvegardés localement dans `favorites.json`
+- Favoris séparés par compte si une authentification proxy est activée
+- Mode SSO sans interface personnalisée dans l'app via headers compatibles Keycloak
 - Prêt pour déploiement Streamlit Cloud, Render ou Docker
 
 ## Installation locale
@@ -50,10 +52,38 @@ cp .env.example .env
 Puis modifie `.env` :
 
 ```env
+OMDB_API_KEYS=cle_1,cle_2,cle_3
+
+# ou version simple
 OMDB_API_KEY=ta_cle_api_ici
 ```
 
 Tu peux utiliser la clé que tu as déjà obtenue depuis OMDb. Par sécurité, ne mets pas ta clé directement dans le code et ne publie pas `.env` sur GitHub.
+
+## Authentification Keycloak sans interface
+
+Cette app peut fonctionner derrière Keycloak sans écran de login dans Streamlit.
+Le principe est le suivant :
+
+1. Keycloak gère la connexion en dehors de l'app.
+2. Un proxy (par exemple `oauth2-proxy`, Nginx, Traefik, Caddy) transmet un header de confiance.
+3. Streamlit lit ce header et sépare les favoris par utilisateur.
+
+Exemple de configuration locale :
+
+```env
+AUTH_MODE=header
+AUTH_REQUIRED=true
+AUTH_HEADER_CANDIDATES=x-auth-request-email,x-auth-request-user,x-forwarded-email,x-forwarded-user
+```
+
+Pour du développement local sans proxy, tu peux simuler un utilisateur :
+
+```env
+AUTH_DEV_USER=dev@example.com
+```
+
+Si `AUTH_REQUIRED=true` et qu'aucun header utilisateur n'est transmis, l'app se bloque volontairement.
 
 ## Lancement
 
@@ -76,6 +106,9 @@ http://localhost:8501
 5. Dans **Settings > Secrets**, ajoute :
 
 ```toml
+OMDB_API_KEYS = ["cle_1", "cle_2", "cle_3"]
+
+# ou version simple
 OMDB_API_KEY = "ta_cle_api_ici"
 ```
 
@@ -100,6 +133,9 @@ streamlit run app.py --server.port=$PORT --server.address=0.0.0.0
 5. Ajoute une variable d'environnement :
 
 ```text
+OMDB_API_KEYS=cle_1,cle_2,cle_3
+
+# ou version simple
 OMDB_API_KEY=ta_cle_api_ici
 ```
 

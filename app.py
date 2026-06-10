@@ -8,6 +8,7 @@ import streamlit as st
 from dotenv import load_dotenv
 import requests
 
+from auth import auth_is_required, get_authenticated_user
 from favorites import add_favorite, load_favorites, remove_favorite
 from omdb_client import OmdbClient, OmdbError
 
@@ -464,6 +465,7 @@ def inject_app_styles() -> None:
             }
         }
         
+        div[data-testid="stStatusWidget"],
         #MainMenu, header, footer, button[title="Open the menu"], button[title="Open details"] {
             visibility: hidden !important;
             display: none !important;
@@ -474,12 +476,35 @@ def inject_app_styles() -> None:
     )
 
 
-def get_api_key() -> str:
-    """Read API key from Streamlit secrets, .env, or environment variables."""
+def _normalize_api_keys(raw_value: Any) -> list[str]:
+    if isinstance(raw_value, str):
+        return [key.strip() for key in raw_value.split(",") if key.strip()]
+    if isinstance(raw_value, (list, tuple)):
+        return [str(key).strip() for key in raw_value if str(key).strip()]
+    return []
+
+
+def get_api_keys() -> list[str]:
+    """Read one or more API keys from Streamlit secrets, .env, or environment variables."""
     try:
-        return st.secrets.get("OMDB_API_KEY", "") or os.getenv("OMDB_API_KEY", "")
+        secret_multi = st.secrets.get("OMDB_API_KEYS", "")
+        secret_single = st.secrets.get("OMDB_API_KEY", "")
     except Exception:
-        return os.getenv("OMDB_API_KEY", "")
+        secret_multi = ""
+        secret_single = ""
+
+    env_multi = os.getenv("OMDB_API_KEYS", "")
+    env_single = os.getenv("OMDB_API_KEY", "")
+
+    api_keys = (
+        _normalize_api_keys(secret_multi)
+        or _normalize_api_keys(env_multi)
+        or _normalize_api_keys(secret_single)
+        or _normalize_api_keys(env_single)
+    )
+
+    # Remove duplicates while keeping the original order.
+    return list(dict.fromkeys(api_keys))
 
 
 def poster_url(movie: dict[str, Any]) -> str | None:
@@ -501,7 +526,7 @@ def fetch_trending_titles(client: OmdbClient, titles: list[str], media_type: str
     return results
 
 
-def render_trending_section(client: OmdbClient) -> None:
+def render_trending_section(client: OmdbClient, user_id: str | None = None) -> None:
     st.markdown('<h3 class="section-title">🔥 Tendances</h3>', unsafe_allow_html=True)
     st.markdown('<p class="section-desc">Découvrez les films et séries les plus populaires du moment.</p>', unsafe_allow_html=True)
 
@@ -523,13 +548,18 @@ def render_trending_section(client: OmdbClient) -> None:
     tabs = st.tabs(["🎬 Films tendance", "📺 Séries tendance"])
     with tabs[0]:
         movies = fetch_trending_titles(client, trending_movies, "movie")
-        render_movies_grid(movies, client, context="trending_movie")
+        render_movies_grid(movies, client, context="trending_movie", user_id=user_id)
     with tabs[1]:
         series = fetch_trending_titles(client, trending_series, "series")
-        render_movies_grid(series, client, context="trending_serie")
+        render_movies_grid(series, client, context="trending_serie", user_id=user_id)
 
 
-def render_movie_card(movie: dict[str, Any], client: OmdbClient, context: str = "") -> None:
+def render_movie_card(
+    movie: dict[str, Any],
+    client: OmdbClient,
+    context: str = "",
+    user_id: str | None = None,
+) -> None:
     with st.container(border=True):
         col_img, col_info = st.columns([1, 3])
 
@@ -569,14 +599,19 @@ def render_movie_card(movie: dict[str, Any], client: OmdbClient, context: str = 
                     )
             with button_col_3:
                 if st.button("⭐ Favoris", key=fav_key, use_container_width=True):
-                    added = add_favorite(movie)
+                    added = add_favorite(movie, user_id=user_id)
                     if added:
                         st.success("Ajouté aux favoris.")
                     else:
                         st.warning("Déjà dans les favoris ou données incomplètes.")
 
 
-def render_movies_grid(movies: list[dict[str, Any]], client: OmdbClient, context: str = "") -> None:
+def render_movies_grid(
+    movies: list[dict[str, Any]],
+    client: OmdbClient,
+    context: str = "",
+    user_id: str | None = None,
+) -> None:
     """Affiche les films en grid responsive."""
     if not movies:
         st.info("Aucun film à afficher.")
@@ -590,10 +625,15 @@ def render_movies_grid(movies: list[dict[str, Any]], client: OmdbClient, context
             if movie_idx < len(movies):
                 movie = movies[movie_idx]
                 with col:
-                    render_movie_grid_card(movie, client, context=f"{context}_{movie_idx}")
+                    render_movie_grid_card(movie, client, context=f"{context}_{movie_idx}", user_id=user_id)
 
 
-def render_movie_grid_card(movie: dict[str, Any], client: OmdbClient, context: str = "") -> None:
+def render_movie_grid_card(
+    movie: dict[str, Any],
+    client: OmdbClient,
+    context: str = "",
+    user_id: str | None = None,
+) -> None:
     """Carte film compacte pour grid."""
     title = movie.get("Title", "Titre inconnu")
     year = movie.get("Year", "N/A")
@@ -640,7 +680,7 @@ def render_movie_grid_card(movie: dict[str, Any], client: OmdbClient, context: s
     
     with action_col3:
         if st.button("⭐", key=f"fav_small_{fav_key}", help="Favoris", use_container_width=True):
-            added = add_favorite(movie)
+            added = add_favorite(movie, user_id=user_id)
             if added:
                 st.toast("✅ Ajouté aux favoris!")
             else:
@@ -764,10 +804,10 @@ def fetch_season_data(client: OmdbClient, imdb_id: str, season: int) -> dict[str
         return None
 
 
-def render_favorites(client: OmdbClient) -> None:
+def render_favorites(client: OmdbClient, user_id: str | None = None) -> None:
     st.markdown('<h3 class="section-title">⭐ Mes favoris</h3>', unsafe_allow_html=True)
     st.markdown('<p class="section-desc">Retrouvez ici votre sélection enregistrée.</p>', unsafe_allow_html=True)
-    favorites = load_favorites()
+    favorites = load_favorites(user_id=user_id)
     if not favorites:
         st.info("Aucun favori pour le moment.")
         return
@@ -790,7 +830,7 @@ def render_favorites(client: OmdbClient) -> None:
                 st.rerun()
         with col_4:
             if st.button("❌ Supprimer", key=f"remove_{imdb_id}"):
-                remove_favorite(imdb_id)
+                remove_favorite(imdb_id, user_id=user_id)
                 st.rerun()
         st.divider()
 
@@ -810,12 +850,23 @@ def main() -> None:
     if "search_media_type" not in st.session_state:
         st.session_state["search_media_type"] = "all"
 
-    api_key = get_api_key()
-    if not api_key:
-        st.error("Clé API manquante. Crée un fichier .env avec OMDB_API_KEY=ta_cle_api")
+    api_keys = get_api_keys()
+    if not api_keys:
+        st.error("Cle API manquante. Cree un fichier .env avec OMDB_API_KEYS=cle1,cle2 ou OMDB_API_KEY=ta_cle_api")
         st.stop()
 
-    client = OmdbClient(api_key=api_key)
+    authenticated_user = get_authenticated_user()
+    current_user_id = authenticated_user.user_id if authenticated_user else None
+
+    if auth_is_required() and not current_user_id:
+        st.error("Authentification requise. Aucun utilisateur de confiance n'a ete transmis a l'application.")
+        st.info(
+            "Place Streamlit derriere un proxy Keycloak et transmet un header utilisateur, par exemple "
+            "`X-Auth-Request-Email` ou `X-Forwarded-User`."
+        )
+        st.stop()
+
+    client = OmdbClient(api_keys=tuple(api_keys))
 
     # PAGE: DETAILS
     if st.session_state["current_page"] == "details" and st.session_state["selected_imdb_id"]:
@@ -884,7 +935,7 @@ def main() -> None:
                 st.success(f"✅ {total_results} résultat(s) trouvé(s). Page {page}/{total_pages}.")
                 
                 if movies:
-                    render_movies_grid(movies, client, context=f"search_page{page}")
+                    render_movies_grid(movies, client, context=f"search_page{page}", user_id=current_user_id)
 
                     if total_pages > 1:
                         st.divider()
@@ -907,10 +958,10 @@ def main() -> None:
         
         # Sinon, afficher les tendances
         else:
-            render_trending_section(client)
+            render_trending_section(client, user_id=current_user_id)
 
     with tab_favorites:
-        render_favorites(client)
+        render_favorites(client, user_id=current_user_id)
 
 
 if __name__ == "__main__":
